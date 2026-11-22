@@ -332,7 +332,7 @@ function pgInc(){
  const ext=M?`<div class="card"><h3>➕ بنود إضافية في قائمة الدخل ${btn('addz:e','＋ مصروف')} ${btn('addz:i','＋ إيراد')}</h3><p class="hint">أضف أي بند غير موجود في القائمة (مثل رسوم بنكية، صيانة طارئة، إيراد آخر…). المصروف يُخصم من صافي الدخل والإيراد يُضاف إليه، ويظهر البند في قائمة الدخل وفي الرئيسية والتحليل وملف Excel.</p>${TB(TH('البند')+TH('النوع')+TH('المبلغ','b')+TH(''),M.xo.map((x,i)=>`<tr><td>${IN(`z:${i}:n`,x.n,'text')}</td><td>${sel(i,x.k)}</td><td>${IN(`z:${i}:a`,x.a)}</td><td><button class="del" data-act="delz:${i}">🗑</button></td></tr>`).join('')||'<tr><td colspan="4">لا توجد بنود إضافية.</td></tr>')}</div>`:`<div class="card"><p class="hint">لإضافة بنود إضافية اختر فرعاً واحداً. هنا تظهر مجاميعها لكل الفروع.</p></div>`;
  return ph(`📑 قائمة الدخل: ${AR[mi]} ${yr}`,btn('xlInc','⬇ Excel')+' ')+`<div class="card">${TB(TH('البند')+TH('المبلغ','b')+TH('النسبة إلى إجمالي الإيراد','a'),rows)}</div>${ext}`;
 }
-const PAGES={users:pgUsers,log:pgLog,home:pgHome,sales:pgSales,exp:pgExp,buy:pgBuy,stk:pgStk,man:pgMan,cash:pgCash,ana:pgAna,inc:pgInc};
+const PAGES={map:pgMap,users:pgUsers,log:pgLog,home:pgHome,sales:pgSales,exp:pgExp,buy:pgBuy,stk:pgStk,man:pgMan,cash:pgCash,ana:pgAna,inc:pgInc};
 function build(){
  if(SBON){if(loading)return`<div class="card"><p>⏳ جارٍ التحميل…</p></div>`;if(!ME)return loginUI();if(!ME.role)return pendingUI();if(!S.branches.length)return`<div class="card"><p>لا توجد فروع مرتبطة بحسابك. تواصل مع المدير.</p>${HDR()}</div>`}
  const rv=i=>CALC(br,yr,i).rev;
@@ -538,6 +538,7 @@ app.addEventListener('click',e=>{
 app.addEventListener('input',e=>{
  const i=e.target,p=i.dataset.b;if(!p)return;
  if(RO&&p!=='yr')return;
+ if(p.startsWith('dm:')){if(SBON&&ME.role!=='admin')return;const[,dk,df]=p.split(':');S.dmap=S.dmap||{};S.dmap[dk]=S.dmap[dk]||{};S.dmap[dk][df]=i.value;if(SBON){clearTimeout(window._dmt);window._dmt=setTimeout(()=>DB.setSetting('daftra_map',S.dmap).catch(()=>{}),800)}else save();return}
  if(p==='co'){if(SBON&&ME.role!=='admin')return;S.company=i.value;if(SBON){clearTimeout(cot);cot=setTimeout(()=>DB.setSetting('company',S.company).catch(()=>{}),800)}else save();return}
  if(p==='key'){try{localStorage.setItem(KEYN,i.value.trim())}catch(e){}return}
  if(p==='yr'){yr=+i.value;ana=null;draft=null;dq=[];render();return}
@@ -629,8 +630,8 @@ const DB=window.__KAFID_DB||DBR;
 
 function hydrate(r){
  BID={};BNAME={};VER={};SNAP={};
- S={company:'كافيد',cur:'ر.س',branches:[],bi:{},mo:{}};
- r.st.forEach(x=>{if(x.key==='company')S.company=x.value;if(x.key==='currency')S.cur=x.value});
+ S={company:'كافيد',cur:'ر.س',branches:[],bi:{},mo:{},dmap:{}};
+ r.st.forEach(x=>{if(x.key==='company')S.company=x.value;if(x.key==='currency')S.cur=x.value;if(x.key==='daftra_map'&&x.value&&typeof x.value==='object')S.dmap=x.value});
  r.br.forEach(b=>{BID[b.name]=b.id;BNAME[b.id]=b.name;S.branches.push(b.name);S.bi[b.name]=[]});
  r.it.forEach(x=>{const n=BNAME[x.branch_id];if(!n)return;S.bi[n]=x.items||[];VER['i|'+x.branch_id]=x.version;SNAP['i|'+x.branch_id]=JSON.stringify(S.bi[n])});
  r.mo.forEach(x=>{const n=BNAME[x.branch_id];if(!n)return;const k=`${n}|${x.y}|${x.m}`;S.mo[k]=x.data;mo(n,x.y,x.m);VER[k]=x.version;SNAP[k]=JSON.stringify(S.mo[k])});
@@ -718,12 +719,19 @@ function TABX(){
  const addB=(!SBON||ME.role==='admin')?(showAdd?`<input class="nb" id="nb" placeholder="اسم الفرع الجديد"><button class="pick" data-act="okBr">حفظ</button>`:`<button class="tab add" data-act="showAdd">＋ إضافة فرع</button>`):'';
  return allB+addB;
 }
-const NAVX=()=>SBON&&ME&&ME.role==='admin'?[...NAV,['users','المستخدمون والصلاحيات','👤','#364fc7'],['log','سجل العمليات','🕵️','#495057']]:NAV;
+const NAVX=()=>{const m=['map','ربط دفترة','🔗','#0b7285'];if(!SBON||!ME)return[...NAV,m];if(ME.role==='admin')return[...NAV,m,['users','المستخدمون والصلاحيات','👤','#364fc7'],['log','سجل العمليات','🕵️','#495057']];if(ME.role==='owner')return[...NAV,m];return NAV};
 const loginUI=()=>`<div class="card" style="max-width:420px;margin:60px auto"><h2 style="text-align:center">🔐 تسجيل الدخول</h2><div class="fm" style="flex-direction:column;align-items:stretch"><label>البريد الإلكتروني<input id="lg_e" type="email" autocomplete="username" style="width:100%"></label><label>كلمة المرور<input id="lg_p" type="password" autocomplete="current-password" style="width:100%"></label>${authErr?`<div class="alert">${esc(authErr)}</div>`:''}<button class="pick" data-act="login">دخول</button></div></div>`;
 const pendingUI=()=>`<div class="card" style="max-width:480px;margin:60px auto;text-align:center"><h2>⏳ حسابك قيد الاعتماد</h2><p class="hint">سجّلت الدخول بـ ${esc(ME.email)} لكن لم تُحدَّد صلاحياتك بعد. تواصل مع المدير.</p><button class="back" data-act="logout">خروج</button></div>`;
 
 /* ---------- المستخدمون (للمدير) ---------- */
 async function loadUsers(){try{USERS=await DB.listUsers()}catch(e){msg='تعذّر تحميل المستخدمين: '+((e&&e.message)||'')}render()}
+const DMAP=[['stock','📦 حساب المخزون (المشتريات والجرد)'],['fi','🧾 المصروفات الغذائية — بفاتورة'],['fn','🧾 المصروفات الغذائية — بدون فاتورة'],['pi','🛒 النثرية — بفاتورة'],['pn','🛒 النثرية — بدون فاتورة']];
+function pgMap(){
+ if(SBON&&ME&&ME.role==='manager')return ph('🔗 ربط دفترة')+`<div class="card"><p class="hint">هذه الصفحة للمدير والمالك فقط.</p></div>`;
+ const D=S.dmap||{},done=DMAP.filter(([k])=>D[k]&&(D[k].c||'').trim()).length;
+ const rows=DMAP.map(([k,n])=>`<tr><td style="text-align:start;font-weight:700">${n}</td><td>${IN(`dm:${k}:c`,(D[k]||{}).c||'','text')}</td><td>${IN(`dm:${k}:n`,(D[k]||{}).n||'','text')}</td></tr>`).join('');
+ return ph('🔗 ربط دفترة (الحسابات الآلية)')+`<div class="card"><p class="hint">اكتب لكل بند الحساب في شجرة حسابات دفترة الذي تُرحَّل عليه القيود تلقائياً عند طلب الترحيل. رقم الحساب كما يظهر في دفترة، والاسم للتوضيح. لا يُكتب أي مفتاح أو كلمة مرور هنا. المكتمل: <b>${done}</b> من ${DMAP.length}.</p>${TB(TH('البند')+TH('رقم الحساب في دفترة')+TH('اسم الحساب'),rows)}</div>`;
+}
 function pgUsers(){
  if(!ME||ME.role!=='admin')return ph('👤 المستخدمون')+`<div class="card"><p class="hint">هذه الصفحة للمدير فقط.</p></div>`;
  const bro=S.branches.map(b=>[BID[b],b]),rn=Object.entries(ROLEN);
