@@ -405,7 +405,7 @@ function build(){
  const rv=i=>CALC(br,yr,i).rev;
  return`<header class="top"><input class="co" data-b="co" value="${esc(S.company)}" aria-label="اسم الشركة"${SBON&&ME.role!=='admin'?' readonly':''}><div class="tools"><button class="btn${pg==='home'?' on':''}" data-go="home">🏠 الرئيسية</button><select class="btn" data-b="yr" aria-label="السنة">${[2025,2026,2027,2028].map(y=>`<option value="${y}"${y===yr?' selected':''}>${y}</option>`).join('')}</select>${HDR()}</div></header>
  <nav class="tabs">${S.branches.map((b,i)=>`<button class="tab${b===br?' on':''}" style="--c:${BCOL[i%6]}" data-br="${esc(b)}">${esc(b)}</button>`).join('')}${TABX()}</nav>
- <div class="lay"><aside class="side"><h3>📅 الشهور</h3>${AR.map((n,i)=>`<button class="mb${i===mi?' on':''}" style="--h:${i*30}" data-mo="${i}"><span>${n}</span><small>${V(rv(i)>0?kf(rv(i)):'—')}</small></button>`).join('')}</aside><main>${PAGES[pg]()}<p class="note">${esc(msg)||'البيانات تُحفظ في هذا المتصفح فقط. الأرقام الحالية تجريبية.'}</p>${diagTxt?`<pre class="alert" style="white-space:pre-wrap">${esc(diagTxt)}</pre>`:''}</main></div>`;
+ <div class="lay"><aside class="side"><h3>📅 الشهور</h3>${AR.map((n,i)=>`<button class="mb${i===mi?' on':''}" style="--h:${i*30}" data-mo="${i}"><span>${n}</span><small>${V(rv(i)>0?kf(rv(i)):'—')}</small></button>`).join('')}</aside><main>${PAGES[pg]()}<p class="note">${esc(msg)||(SBON?'البيانات محفوظة على الخادم (Supabase). الإصدار: 23-11-2026 ✔ رسوم بيانية · وحدات · تصدير Excel · استرجاع كلمة المرور':'البيانات تُحفظ في هذا المتصفح فقط. الأرقام الحالية تجريبية.')}</p>${diagTxt?`<pre class="alert" style="white-space:pre-wrap">${esc(diagTxt)}</pre>`:''}</main></div>`;
 }
 const app=$('#root');
 let dq=[],draft=null;
