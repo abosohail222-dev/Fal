@@ -112,6 +112,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 
 .acct{display:inline-block;background:#e6fcf5;color:#087f5b;border-radius:999px;padding:2px 10px;font-size:.82rem;font-weight:700;white-space:nowrap}
 .acct.no{background:#fff3bf;color:#a65e00}.lnk{border:0;background:none;color:#1864ab;text-decoration:underline;font-weight:700;cursor:pointer;padding:0 4px}
+.cc{background:var(--surface);border-radius:20px;padding:16px 18px 10px;box-shadow:0 6px 22px rgba(40,30,90,.12);margin-bottom:14px}.cch{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}.cch b{font-size:1.1rem}.cch small{display:block;color:var(--muted);font-weight:600}.lg{display:flex;gap:14px;flex-wrap:wrap}.lg span{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:.85rem}.lg i{width:12px;height:12px;border-radius:4px;display:inline-block}.cs{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0 6px}.cs div{background:var(--surface2);border-radius:12px;padding:6px 14px}.cs small{display:block;font-size:.75rem;color:var(--muted);font-weight:700}.cs b{font-size:1rem}.cc svg{width:100%;height:auto;display:block}.cc .emp{padding:30px;text-align:center;color:var(--muted)}.xbar{display:flex;justify-content:flex-end;margin:0 0 10px}
 </style>
 </head>
 <body>
@@ -191,16 +192,39 @@ function CALC(b,y,m){if(b!==ALL)return calc1(b,y,m);const o={};S.branches.forEac
 const idb={db:null,open(){return new Promise((res,rej)=>{if(this.db)return res(this.db);const q=indexedDB.open('kafid_files',1);q.onupgradeneeded=()=>q.result.createObjectStore('f');q.onsuccess=()=>{this.db=q.result;res(this.db)};q.onerror=()=>rej(q.error)})},
  async put(k,v){const db=await this.open();return new Promise((res,rej)=>{const t=db.transaction('f','readwrite');t.objectStore('f').put(v,k);t.oncomplete=res;t.onerror=()=>rej(t.error)})},
  async get(k){const db=await this.open();return new Promise((res,rej)=>{const q=db.transaction('f').objectStore('f').get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})}};
-async function xl(name,rows){
+async function xlm(name,sheets,plain){
  try{
   if(!window.XLSX){msg='تعذّر تحميل مكتبة Excel. تأكد من الاتصال بالإنترنت.';return render()}
-  const ws=XLSX.utils.aoa_to_sheet(rows),wb=XLSX.utils.book_new();ws['!cols']=rows[0].map(()=>({wch:22}));wb.Workbook={Views:[{RTL:true}]};
-  XLSX.utils.book_append_sheet(wb,ws,AR[mi]);
-  const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'}),fn=`${S.company} - ${br} - ${name} - ${AR[mi]} ${yr}.xlsx`;
+  const wb=XLSX.utils.book_new();wb.Workbook={Views:[{RTL:true}]};const used=new Set();
+  sheets.forEach(([sn,rows])=>{const r=rows&&rows.length?rows:[['لا توجد بيانات']];const ws=XLSX.utils.aoa_to_sheet(r);ws['!cols']=r[0].map((_,j)=>({wch:j?20:30}));let n=String(sn).replace(/[\\\/?*\[\]:]/g,' ').slice(0,31),k=2;while(used.has(n))n=n.slice(0,28)+' '+k++;used.add(n);XLSX.utils.book_append_sheet(wb,ws,n)});
+  const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'}),fn=plain?`${S.company} - ${name}.xlsx`:`${S.company} - ${br} - ${name} - ${AR[mi]} ${yr}.xlsx`;
   const dl=typeof claude!=='undefined'&&claude.use?await claude.use('downloads'):null;
   if(dl)await dl.save({filename:fn,data:buf});
   else{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));a.download=fn;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000)}
  }catch(e){if(e&&e.code==='declined')return;msg='تعذّر التحميل: '+((e&&(e.message||e.code))||'');render()}
+}
+const xl=(name,rows)=>xlm(name,[[AR[mi],rows]]);
+/* ---- بناة صفوف Excel ---- */
+const rSales=M=>[['التاريخ','كيتا','جاهز','هنجرستيشن','نينجا','الشبكة بالنظام','الكاش بالنظام','عدد الطلبات','الخصم','المبيعات شامل الموازنة','الموازنة','البنك','الكاش الفعلي'],...M.days.map(d=>[d.d,...DL.map(([k])=>num(d[k])),...['net','cash','ord','disc'].map(k=>num(d[k])),DL.reduce((t,[k])=>t+num(d[k]),0)+num(d.cash)+num(d.bud),...['bud','bank','act'].map(k=>num(d[k]))])];
+const rInv=M=>[['التاريخ','رقم الفاتورة','اسم المورد','نوع الفاتورة','بفاتورة','الإجمالي بالضريبة','المبلغ بدون الضريبة','الضريبة'],...M.inv.map(v=>[v.d,v.no||'',v.sup,v.t==='food'?'غذائية':'نثرية',v.hi?'نعم':'لا',num(v.tot),num(v.tot)-num(v.tax),num(v.tax)])];
+const rStk=()=>{let to=0,tp=0,tc=0,tv=0;const rws=IT(br).map(it=>{const s=srow(br,yr,mi,it),ov=s.o*s.P,cv=s.c===undefined?null:s.c*s.P;to+=ov;tp+=s.pv;if(s.v!==null){tv+=s.v;tc+=cv}return[it.n,TYP[it.t][0],it.u,+s.P.toFixed(4),s.o,+ov.toFixed(2),s.p,+s.pv.toFixed(2),s.c===undefined?'':s.c,cv===null?'':+cv.toFixed(2),s.q===null?'':+s.q.toFixed(2),s.v===null?'':+s.v.toFixed(2)]});return [['الصنف','النوع','الوحدة','السعر','الكمية أول المدة','القيمة أول المدة','المشتريات (الكمية)','قيمة المشتريات','الكمية آخر المدة (الجرد)','القيمة آخر المدة','كمية الاستهلاك','قيمة الاستهلاك'],...rws,['الإجمالي','','','','',+to.toFixed(2),'',+tp.toFixed(2),'',+tc.toFixed(2),'',+tv.toFixed(2)]]};
+const rInc=()=>{const{L,R}=incList();return [['البند','المبلغ','النسبة إلى إجمالي الإيراد'],...L.map(r=>r.k==='h'?[r.t,'','']:[r.t,+r.a.toFixed(2),R?+(r.a/R).toFixed(4):''])]};
+const rBuyI=()=>[['الصنف','النوع','الوحدة','سعر الوحدة','الكمية المشتراة في الشهر','قيمة المشتريات'],...IT(br).map(it=>{const s=srow(br,yr,mi,it);return[it.n,TYP[it.t][0],it.u,+s.P.toFixed(4),s.pq,+s.pv.toFixed(2)]})];
+const rBuyP=M=>{const R=[['التاريخ','رقم الفاتورة','المورد','النوع','الصنف','الكمية','الوحدة','المبلغ','إجمالي الفاتورة بالضريبة','الضريبة','ملاحظة']];M.pur.forEach(v=>{if(v.cost||!v.lines||!v.lines.length)R.push([v.d,v.no||'',v.sup||'',TYP[v.t][0],'','','','',num(v.total),num(v.tax),'تكلفة فقط']);else v.lines.forEach((l,k)=>{const it=IT(br).find(i=>i.id===l.i)||{};R.push([v.d,v.no||'',v.sup||'',TYP[v.t][0],it.n||'',num(l.q),it.u||'',num(l.a),k?'':num(v.total),k?'':num(v.tax),''])})});return R};
+const rMan=M=>{const R=[['القسم','البند','المبلغ'],['الهالك','هالك البن',num(M.wb)],['الهالك','هالك المطبخ',num(M.wk)]];M.ops.forEach(x=>R.push(['المصروفات التشغيلية',x.n,num(x.a)]));M.sal.forEach(x=>R.push(['الرواتب',x.n,num(x.a)]));R.push(['الإهلاك والإطفاء','مصروفات الإهلاك والإطفاء',num(M.dep)]);M.xo.forEach(x=>R.push([x.k==='i'?'إيرادات أخرى':'مصروفات أخرى',x.n||'بند بدون اسم',num(x.a)]));return R};
+const rCash=()=>{const m=calc1(br,yr,mi);return[['البند','المبلغ'],['إجمالي الكاش الفعلي',+m.cash.toFixed(2)],['(−) غذائية بفاتورة',m.ex.fi],['(−) غذائية بدون فاتورة',m.ex.fn],['(−) نثرية بفاتورة',m.ex.pi],['(−) نثرية بدون فاتورة',m.ex.pn],['الرصيد المتبقي من الكاش',+(m.cash-m.exT).toFixed(2)]]};
+const rAnaI=()=>{if(!ana){ana=[];for(let i=0;i<12;i++)if(CALC(br,yr,i).rev>0)ana.push(i)}const sel=[...ana].sort((a,b)=>a-b),C=sel.map(i=>CALC(br,yr,i));return[['البند',...sel.flatMap(i=>[AR[i],AR[i]+' (% من الإيرادات)'])],...AI.map(([n,f])=>[n,...C.flatMap(m=>[+f(m).toFixed(2),m.rev?+(f(m)/m.rev).toFixed(4):''])])]};
+const rAnaS=()=>{if(!cmp)cmp=[1,2,3];const cur=CALC(br,yr,mi),sel=[...cmp].sort((a,b)=>a-b),C=sel.map(k=>{const q=mAt(k);return CALC(br,q.y,q.m)}),R=[['البند',AR[mi]+' '+yr+' (الحالي)',...sel.map(k=>mAt(k).l)]];CATS.forEach(([t,ic,n,sk])=>{R.push(['مبيعات '+n,+cur[sk].toFixed(2),...C.map(m=>+m[sk].toFixed(2))]);R.push(['تكلفة '+n,+cur.cost[t].toFixed(2),...C.map(m=>+m.cost[t].toFixed(2))]);R.push(['نسبة التكلفة إلى المبيعات',cur[sk]?+(cur.cost[t]/cur[sk]).toFixed(4):'',...C.map(m=>m[sk]?+(m.cost[t]/m[sk]).toFixed(4):'')])});return R};
+const rMap=()=>[['البند','رقم حساب دفترة','اسم الحساب'],...DMAP.map(([k,n])=>[n,(S.dmap||{})[k]?(S.dmap[k].c||''):'',(S.dmap||{})[k]?(S.dmap[k].n||''):''])];
+const rUsers=()=>[['الاسم','البريد الإلكتروني','الدور','الفرع'],...(USERS||[]).map(u=>[u.full_name||'',u.email,ROLEN[u.role]||'غير معتمد',BNAME[u.branch_id]||''])];
+const rLog=()=>{const A=(AUD||[]).filter(r=>(!audU||r.email===audU)&&(!audB||r.branch_id===audB)),tm=t=>new Date(t).toLocaleString('en-GB',{timeZone:'Asia/Riyadh',hour12:false,dateStyle:'short',timeStyle:'short'});return[['الوقت','المستخدم','الفرع','العملية','التفاصيل'],...A.map(r=>[tm(r.at),r.email||'',BNAME[r.branch_id]||'',(ALAB[r.action]||r.action)+' '+audTarget(r.target),audDetail(r)])]};
+const rHome=()=>{const m=CALC(br,yr,mi),R=m.rev,p=v=>R?+(v/R).toFixed(4):'',row=(n,v)=>[n,+(+v).toFixed(2),p(v)];return[['البند','المبلغ','النسبة إلى إجمالي الإيرادات'],row('إجمالي الإيرادات',R),row('الكاش الفعلي',m.cash),row('الشبكة (الموازنة)',m.net),...DL.map(([k,n])=>row('إيرادات '+n,m.dl[k])),row('تكلفة المبيعات',m.costT),...['bean','kit','wh'].map(t=>row('تكلفة '+TYP[t][0],m.cost[t])),row('المصروفات التشغيلية',m.ops),row('الرواتب',m.sal),row('مصروفات أخرى',m.oe),row('المصروفات النقدية الغذائية',m.ex.fi+m.ex.fn),row('المصروفات النقدية النثرية',m.ex.pi+m.ex.pn),row('صافي الدخل (بدون الإهلاك والإطفاء)',m.ni0)]};
+const rYear=()=>[['الشهر','الإيرادات','الكاش','الشبكة','شركات التوصيل','التكاليف التشغيلية','تكلفة المبيعات'],...yearSeries().map(d=>[d.n,+d.rev.toFixed(2),+d.cash.toFixed(2),+d.net.toFixed(2),+d.del.toFixed(2),+d.op.toFixed(2),+d.cost.toFixed(2)])];
+function xlAll(M){
+ const L=[['ملخص الشهر',rHome()],['الإيرادات والتكاليف السنوية',rYear()]];
+ if(M){L.push(['المبيعات',rSales(M)],['الفواتير',rInv(M)],['أصناف المخزون',rBuyI()],['مشتريات المخزون',rBuyP(M)],['الجرد',rStk()],['الهالك والرواتب',rMan(M)],['عهدة الكاش',rCash()])}
+ L.push(['قائمة الدخل',rInc()],['مقارنة الشهور',rAnaI()],['المبيعات والتكلفة',rAnaS()]);
+ return xlm('تقرير شامل',L);
 }
 const NAV=[['buy','المخزون','📦','#c2255c'],['stk','الجرد','✅','#5f3dc4'],['man','الهالك والمصروفات والرواتب','🧮','#d9480f'],['sales','جدول تفاصيل المبيعات','📋','#1864ab'],['exp','المصروفات والفواتير','🧾','#087f5b'],['cash','تصفية عهدة الكاش','💵','#0b7285'],['ana','التحليل','📈','#a61e4d'],['inc','قائمة الدخل','📑','#7a4f2e']];
 let ana=null;
@@ -214,6 +238,43 @@ const VS=h=>`<span data-c="${++_c}">${h}</span>`;
 const BAR=(p,c)=>`<div class="bar"><i data-c="${++_c}" style="--c:${c};width:${Math.max(0,Math.min(100,p))}%"></i></div>`;
 const btn=(a,t)=>`<button class="pick" data-act="${a}">${t}</button>`;
 const rl=(items,tot,cls)=>`<div class="rl${cls?' '+cls:''}">${items.map(([n,v,c,ic])=>{const p=tot>0?Math.max(0,Math.min(100,v/tot*100)):0;return`<div class="ri" style="--c:${c}"><div class="rt"><span class="rn"><i class="dot"></i>${ic?ic+' ':''}${n}</span><span class="rv">${V(money(v))}${VI(pct(v,tot))}</span></div><div class="bar"><i style="width:${p.toFixed(1)}%"></i></div></div>`}).join('')}</div>`;
+
+/* ---------- الوحدات ---------- */
+const DEFU=['كجم','جرام','لتر','مل','عبوة','علبة','كيس','كرتون','قطعة','دزينة','رول','وحدة'];
+let UNSEL='';
+const UNITS=()=>{const a=[...DEFU,...(S.units||[])];Object.values(S.bi||{}).forEach(l=>l.forEach(i=>{if(i.u)a.push(i.u)}));return[...new Set(a.map(x=>String(x).trim()).filter(Boolean))]};
+const unitOpts=sel=>{const L=UNITS();if(sel&&!L.includes(sel))L.push(sel);return L.map(u=>`<option value="${esc(u)}"${u===sel?' selected':''}>${esc(u)}</option>`).join('')};
+const USEL=(k,v)=>`<select data-b="${k}">${v?'':'<option value="" selected>—</option>'}${unitOpts(String(v||'').trim())}</select>`;
+function addUnitName(n){n=String(n||'').trim();if(!n||UNITS().includes(n))return;S.units=[...(S.units||[]),n];if(SBON&&ME&&ME.role==='admin')DB.setSetting('units',S.units).catch(()=>{})}
+
+/* ---------- الرسوم البيانية ---------- */
+const kk=v=>{const a=Math.abs(v),g=v<0?'−':'';return a>=1e6?g+(a/1e6).toFixed(1)+'M':a>=1e4?g+Math.round(a/1e3)+'k':a>=1e3?g+(a/1e3).toFixed(1)+'k':g+Math.round(a)};
+const nice=v=>{if(v<=0)return 1;const p=Math.pow(10,Math.floor(Math.log10(v))),f=v/p;return(f<=1?1:f<=2?2:f<=4?4:f<=8?8:10)*p};
+function yearSeries(){return AR.map((n,i)=>{const m=CALC(br,yr,i);return{i,n,rev:m.cash+m.net+m.del,cash:m.cash,net:m.net,del:m.del,op:m.ops+m.sal+m.oe,cost:m.costT}})}
+function barSVG(D,L,mode){
+ const W=760,H=290,pl=10,pr=50,pt=22,pb=30,iw=W-pl-pr,ih=H-pt-pb,sl=iw/12;
+ const tot=d=>mode==='stack'?L.reduce((a,x)=>a+Math.max(0,d[x.k]),0):Math.max(...L.map(x=>Math.max(0,d[x.k])),0);
+ const mx=nice(Math.max(...D.map(tot),0)),Y=v=>pt+ih-Math.max(0,v)/mx*ih;let g='';
+ for(let t=0;t<=4;t++){const y=Y(mx*t/4);g+=`<line x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}" stroke="rgba(110,105,140,.22)"${t?' stroke-dasharray="3 4"':''}/><text x="${W-pr+8}" y="${y+4}" font-size="11" fill="#66647c">${kk(mx*t/4)}</text>`}
+ D.forEach(d=>{const x0=pl+(11-d.i)*sl,cx=x0+sl/2,cur=d.i===mi;let bars='',lab='';
+  if(mode==='stack'){const bw=sl*.56;let acc=0;L.forEach(x=>{const v=Math.max(0,d[x.k]);if(v<=0)return;const y1=Y(acc+v),y0=Y(acc);bars+=`<rect x="${cx-bw/2}" y="${y1}" width="${bw}" height="${Math.max(.5,y0-y1)}" fill="${x.c}"/>`;acc+=v});if(acc>0)lab=`<text x="${cx}" y="${Y(acc)-5}" text-anchor="middle" font-size="10" font-weight="700" fill="#1d1b2e">${kk(acc)}</text>`}
+  else{const n=L.length,bw=sl*.76/n,st=cx-bw*n/2;L.forEach((x,k)=>{const v=Math.max(0,d[x.k]),y=Y(v);bars+=`<rect x="${st+k*bw+1}" y="${y}" width="${bw-2}" height="${Math.max(v>0?.5:0,pt+ih-y)}" rx="3" fill="${x.c}"/>`;if(v>0)lab+=`<text x="${st+k*bw+bw/2}" y="${y-4}" text-anchor="middle" font-size="9" font-weight="700" fill="#1d1b2e">${kk(v)}</text>`})}
+  const tip=`${AR[d.i]} ${yr}\n`+L.map(x=>`${x.n}: ${money(d[x.k])}`).join('\n');
+  g+=`<g data-mo="${d.i}" style="cursor:pointer"><title>${tip}</title><rect x="${x0+2}" y="${pt-10}" width="${sl-4}" height="${ih+pb}" fill="${cur?'rgba(95,61,196,.09)':'transparent'}" rx="8"/>${bars}${lab}<text x="${cx}" y="${H-10}" text-anchor="middle" font-size="11" font-weight="${cur?800:500}" fill="${cur?'#5f3dc4':'#66647c'}">${AR[d.i]}</text></g>`});
+ return`<svg viewBox="0 0 ${W} ${H}" style="direction:ltr" role="img">${g}</svg>`;
+}
+const ccard=(t,sub,L,chips,body)=>`<div class="cc"><div class="cch"><div><b>${t}</b><small>${sub}</small></div><div class="lg">${L.map(x=>`<span><i style="background:${x.c}"></i>${x.n}</span>`).join('')}</div></div><div class="cs">${chips.map(([a,b])=>`<div><small>${a}</small><b>${b}</b></div>`).join('')}</div>${body}</div>`;
+const scope=()=>br===ALL?'كل الفروع':esc(br);
+function chartRev(){
+ const D=yearSeries(),T=D.reduce((a,d)=>a+d.rev,0),A=D.filter(d=>d.rev>0),best=A.length?A.reduce((b,d)=>d.rev>b.rev?d:b):null;
+ const L=[{k:'cash',n:'الكاش الفعلي',c:'#0b7285'},{k:'net',n:'الشبكة',c:'#1864ab'},{k:'del',n:'شركات التوصيل',c:'#e8590c'}];
+ return ccard(`📊 الإيرادات الشهرية — ${yr}`,`${scope()} · اضغط على أي شهر للانتقال إليه`,L,[['إجمالي السنة',money(T)],['متوسط الشهر',A.length?money(T/A.length):'—'],['أعلى شهر',best?`${best.n} (${money(best.rev)})`:'—']],T>0?barSVG(D,L,'stack'):'<div class="emp">لا توجد إيرادات مسجلة في هذه السنة بعد.</div>');
+}
+function chartCost(){
+ const D=yearSeries(),R=D.reduce((a,d)=>a+d.rev,0),O=D.reduce((a,d)=>a+d.op,0);
+ const L=[{k:'rev',n:'الإيرادات',c:'#087f5b'},{k:'op',n:'التكاليف التشغيلية',c:'#c2410c'}];
+ return ccard(`⚖️ التكاليف التشغيلية مقابل الإيرادات — ${yr}`,`${scope()} · التكاليف التشغيلية = المصروفات التشغيلية + الرواتب + المصروفات الأخرى`,L,[['إجمالي الإيرادات',money(R)],['التكاليف التشغيلية',money(O)],['نسبتها إلى الإيرادات',R?pct(O,R):'—'],['الفرق',money(R-O)]],(R>0||O>0)?barSVG(D,L,'group'):'<div class="emp">لا توجد بيانات في هذه السنة بعد.</div>');
+}
 function pgHome(){
  const m=CALC(br,yr,mi),R=m.rev,P=x=>pct(x,R),cm=m.costT+m.ops+m.sal+m.oe;
  const hero=`<div class="hero"><div class="ht"><span class="hi">💰</span><div><small>إجمالي الإيرادات</small>${V(money(R))}</div></div>
@@ -225,7 +286,7 @@ function pgHome(){
   ${m.oi?`<div class="inc">➕ إيرادات أخرى: ${V(money(m.oi))} ${VI(P(m.oi))}</div>`:''}</div>`;
  const ni=`<div class="net" style="--c:${m.ni0<0?'#c92a2a':'#087f5b'};--c2:${m.ni0<0?'#e8590c':'#2f9e44'}"><div><small>📑 صافي الدخل (بدون الإهلاك والإطفاء)</small>${V(money(m.ni0))}</div>${VI(P(m.ni0)+' من الإيرادات')}</div>`;
  const exp=`<div class="pc"><div class="ph3"><b>💳 المصروفات النقدية (غذائية ونثرية)</b><span>${V(money(m.exT))}</span></div>${rl([['غذائية بفاتورة',m.ex.fi,'#2f9e44'],['غذائية بدون فاتورة',m.ex.fn,'#74b816'],['نثرية بفاتورة',m.ex.pi,'#e8590c'],['نثرية بدون فاتورة',m.ex.pn,'#f08c00']],m.exT||R)}</div>`;
- return`<div class="hgrid">${hero}${costs}</div>${ni}${exp}
+ return`<div class="xbar">${btn('xlAll','⬇ تصدير كل الأقسام Excel')}</div><div class="hgrid">${hero}${costs}</div>${chartRev()}${chartCost()}${ni}${exp}
  <h3 style="color:#14121f;margin:10px 4px 6px">⚙️ العمليات</h3><div class="gn">${NAVX().map(([g,t,i,c])=>`<button class="nav" data-go="${g}" style="--c:${c}"><span>${i}</span>${t}</button>`).join('')}</div>`;
 }
 function pgSales(){
@@ -252,11 +313,11 @@ function pgExp(){
  const h=TH('التاريخ')+TH('رقم الفاتورة')+TH('اسم المورد')+TH('النوع')+TH('الفاتورة')+TH('الحساب الآلي في دفترة')+TH('الإجمالي بالضريبة','a')+TH('الضريبة','d')+TH('المبلغ بدون الضريبة','b')+TH('المرفق (يُقرأ تلقائياً)')+TH('');
  return ph(`🧾 المصروفات والفواتير: ${AR[mi]} ${yr}`,btn('addInv','＋ إضافة فاتورة')+' '+btn('xlInv','⬇ Excel')+' ')+`<div class="g4">${[['غذائية بفاتورة','fi'],['غذائية بدون فاتورة','fn'],['نثرية بفاتورة','pi'],['نثرية بدون فاتورة','pn']].map(([n,k])=>bx(n,money(m.ex[k]),undefined,k[0]==='f'?'#2f9e44':'#e8590c','🧾').replace('</div>',`<div style="margin-top:4px">${accTag(k)}</div></div>`)).join('')}${bx('الإجمالي',money(m.exT),undefined,'#5f3dc4','💳')}</div><div class="card"><p class="hint">عند رفع فاتورة (PDF أو صورة) على سطر "بفاتورة" تُقرأ بواسطة Claude وتُعبّأ كل بيانات الفاتورة (التاريخ والرقم والمورد والإجمالي والضريبة). إذا احتوى الملف على أكثر من فاتورة يُنشأ سطر مستقل لكل فاتورة. راجع الأرقام قبل الاعتماد، وكلها قابلة للتعديل. <button class="back" data-act="diag">🔍 فحص القراءة الآلية</button></p>${KEYUI()}${TB(h,rows||'<tr><td colspan="10">لا توجد فواتير.</td></tr>')}</div>`;
 }
-function itemForm(){return`<div class="fm wr"><input id="ni_n" type="text" placeholder="اسم الصنف"><input id="ni_u" type="text" placeholder="الوحدة (كجم، لتر)"><input id="ni_p" type="number" step="any" placeholder="السعر"><select id="ni_t"><option value="bean">بن</option><option value="wh">أصناف المستودع</option><option value="kit">منتجات المطبخ</option></select>${btn('addItem','＋ إضافة صنف')}</div>`}
+function itemForm(){return`<div class="fm wr"><input id="ni_n" type="text" placeholder="اسم الصنف"><select id="ni_u" title="الوحدة">${unitOpts(UNSEL||'كجم')}</select><input id="ni_u2" type="text" placeholder="وحدة جديدة" style="width:120px">${btn('addUnit','＋ وحدة')}<input id="ni_p" type="number" step="any" placeholder="السعر"><select id="ni_t"><option value="bean">بن</option><option value="wh">أصناف المستودع</option><option value="kit">منتجات المطبخ</option></select>${btn('addItem','＋ إضافة صنف')}</div>`}
 function draftUI(){
  const d=draft;
  if(d.st==='reading')return`<div class="card" style="border:3px solid #c2255c"><p>⏳ جارٍ قراءة الفاتورة <b>${esc(d.fn)}</b>… قد يستغرق دقيقة. <b class="prog"></b> ${btn('cancelDraft','إلغاء')}<br><small class="step"></small></p></div>`;
- const rows=d.lines.map((l,i)=>{const m=matchItem(l.n,d.t);return`<tr><td>${IN(`x:${i}:n`,l.n,'text')}<small>${VS(m?'✔ مطابق: '+esc(m.n):'＋ صنف جديد')}</small></td><td>${IN(`x:${i}:q`,l.q)}</td><td>${IN(`x:${i}:u`,l.u,'text')}</td><td>${IN(`x:${i}:a`,l.a)}</td><td>${V(money(num(l.q)?num(l.a)/num(l.q):0))}</td><td><button class="del" data-act="delX:${i}">🗑</button></td></tr>`}).join('');
+ const rows=d.lines.map((l,i)=>{const m=matchItem(l.n,d.t);return`<tr><td>${IN(`x:${i}:n`,l.n,'text')}<small>${VS(m?'✔ مطابق: '+esc(m.n):'＋ صنف جديد')}</small></td><td>${IN(`x:${i}:q`,l.q)}</td><td>${USEL(`x:${i}:u`,l.u)}</td><td>${IN(`x:${i}:a`,l.a)}</td><td>${V(money(num(l.q)?num(l.a)/num(l.q):0))}</td><td><button class="del" data-act="delX:${i}">🗑</button></td></tr>`}).join('');
  const sm=d.lines.reduce((a,l)=>a+num(l.a),0),diff=num(d.total)-sm,okk=Math.abs(diff)<0.01&&d.lines.length&&d.lines.every(l=>l.n.trim()&&num(l.q)>0);
  return`<div class="card" style="border:3px solid #c2255c"><h3>🔎 مراجعة الفاتورة: ${esc(d.fn)} (${TYP[d.t][1]} ${TYP[d.t][0]})${d.cnt>1?` <span class="tag">فاتورة ${d.pos} من ${d.cnt}</span>`:''}</h3>${d.err?`<div class="alert">${esc(d.err)}</div>`:''}${d.note?`<p class="hint" style="color:#c92a2a">${esc(d.note)}</p>`:''}
  <div class="fm"><label>التاريخ ${IN('x:d',d.d,'date')}</label><label>رقم الفاتورة ${IN('x:no',d.no,'text')}</label><label>المورد ${IN('x:sup',d.sup,'text')}</label><label>الإجمالي شامل الضريبة ${IN('x:total',d.total)}</label><label>الضريبة ${IN('x:tax',d.tax)}</label></div>
@@ -270,7 +331,7 @@ function pgBuy(){
  const M=mo(br,yr,mi),P=calc1(br,yr,mi).pur,tot=P.bean+P.kit+P.wh;
  const g=t=>{const a=IT(br).filter(i=>i.t===t);return`<tr class="gr"><td colspan="6">${TYP[t][1]} ${TYP[t][0]}: ${V(money(P[t]))}</td></tr>`+a.map(it=>{const s=srow(br,yr,mi,it);return`<tr><td><b>${esc(it.n)}</b><small>${esc(it.u)}</small></td><td>${IN(`i:${it.id}:p`,it.p)}</td><td>${V(money(s.P))}</td><td>${IN(`s:${it.id}:p`,s.pm||'')}</td><td>${V(fq(s.pq))}</td><td>${V(money(s.pv))}</td><td><button class="del" data-act="delItem:${it.id}">🗑</button></td></tr>`}).join('')};
  const inv=M.pur.map((v,i)=>`<div class="card"><div class="pt"><b>${TYP[v.t][1]} ${esc(v.sup||'—')} · ${esc(v.d)}${v.no?' · رقم '+esc(v.no):''} ${v.cost?'<span class="tag">تكلفة فقط</span>':''}</b><span>${money(v.total)} <small>(ضريبة ${money(v.tax)})</small> ${v.f?`<button class="back" data-act="viewP:${i}">📎</button>`:''} <button class="del" data-act="delPur:${i}">🗑</button></span></div>${v.cost?'':TB(TH('الصنف')+TH('الكمية','a')+TH('الوحدة')+TH('الإجمالي شامل الضريبة','b'),v.lines.map(l=>`<tr><td>${esc(l.n)}</td><td>${fq(l.q)}</td><td>${esc(l.u)}</td><td>${money(l.a)}</td></tr>`).join(''))}</div>`).join('');
- return ph(`📦 المخزون: ${AR[mi]} ${yr}`,V(money(tot),'pos')+' ')+`<div class="card" style="padding:10px 16px"><b>الحساب الآلي في دفترة:</b> ${accTag('stock')}</div><div class="card wr"><h3>⬆ رفع فاتورة للمخزون</h3><div class="fm"><select id="pt"><option value="bean">فاتورة بن</option><option value="wh">فاتورة أصناف المستودع</option><option value="kit">فاتورة منتجات المطبخ</option></select><label class="pick">⬆ اختيار الفاتورة (PDF أو صورة)<input type="file" accept="application/pdf,image/*" data-pur hidden></label></div><p class="hint">تُقرأ كل الفواتير داخل الملف (حتى لو كان فيه أكثر من فاتورة)، وتظهر واحدة تلو الأخرى للمراجعة والاعتماد: البنود والكميات والتكلفة شاملة الضريبة. لا تُضاف الفاتورة إلا إذا ساوى مجموع بنودها مبلغ الفاتورة. <button class="back" data-act="diag">🔍 فحص القراءة الآلية</button></p>${KEYUI()}</div>${costForm()}${draft?draftUI():''}${inv?`<h3 style="color:#14121f;margin:6px 4px">🧾 فواتير المخزون المعتمدة</h3>${inv}`:''}<div class="card"><h3>📦 إجمالي مشتريات المخزون حسب الصنف</h3><p class="hint">القيمة = قيمة الفواتير + (الكمية اليدوية × سعر الشهر). سعر الشهر = متوسط تكلفة الوحدة شاملة الضريبة من الفواتير، وإلا آخر سعر فاتورة، وإلا السعر الأساسي.</p>${TB(TH('الصنف')+TH('السعر الأساسي')+TH('سعر الشهر','e')+TH('مشتريات يدوية (الكمية)','b')+TH('كمية الفواتير','b')+TH('القيمة','e')+TH(''),g('bean')+g('wh')+g('kit'))}${itemForm()}</div>`;
+ return ph(`📦 المخزون: ${AR[mi]} ${yr}`,V(money(tot),'pos')+' '+btn('xlBuy','⬇ Excel')+' ')+`<div class="card" style="padding:10px 16px"><b>الحساب الآلي في دفترة:</b> ${accTag('stock')}</div><div class="card wr"><h3>⬆ رفع فاتورة للمخزون</h3><div class="fm"><select id="pt"><option value="bean">فاتورة بن</option><option value="wh">فاتورة أصناف المستودع</option><option value="kit">فاتورة منتجات المطبخ</option></select><label class="pick">⬆ اختيار الفاتورة (PDF أو صورة)<input type="file" accept="application/pdf,image/*" data-pur hidden></label></div><p class="hint">تُقرأ كل الفواتير داخل الملف (حتى لو كان فيه أكثر من فاتورة)، وتظهر واحدة تلو الأخرى للمراجعة والاعتماد: البنود والكميات والتكلفة شاملة الضريبة. لا تُضاف الفاتورة إلا إذا ساوى مجموع بنودها مبلغ الفاتورة. <button class="back" data-act="diag">🔍 فحص القراءة الآلية</button></p>${KEYUI()}</div>${costForm()}${draft?draftUI():''}${inv?`<h3 style="color:#14121f;margin:6px 4px">🧾 فواتير المخزون المعتمدة</h3>${inv}`:''}<div class="card"><h3>📦 إجمالي مشتريات المخزون حسب الصنف</h3><p class="hint">القيمة = قيمة الفواتير + (الكمية اليدوية × سعر الشهر). سعر الشهر = متوسط تكلفة الوحدة شاملة الضريبة من الفواتير، وإلا آخر سعر فاتورة، وإلا السعر الأساسي.</p>${TB(TH('الصنف')+TH('السعر الأساسي')+TH('سعر الشهر','e')+TH('مشتريات يدوية (الكمية)','b')+TH('كمية الفواتير','b')+TH('القيمة','e')+TH(''),g('bean')+g('wh')+g('kit'))}${itemForm()}</div>`;
 }
 function pgStk(){
  if(br===ALL)return ph('✅ الجرد')+needBr();
@@ -285,12 +346,12 @@ function lines(k,arr,title,c){return`<div class="card"><h3>${title} ${btn('add'+
 function pgMan(){
  if(br===ALL)return ph('🧮 الهالك والمصروفات والرواتب')+needBr();
  const M=mo(br,yr,mi),wc=(ic,t,k,c)=>`<div class="card" style="border-top:6px solid ${c}"><h3>${ic} ${t}</h3><div class="fm">${IN(k,M[k])} <b>${S.cur}</b></div><p class="hint">رقم إجمالي بدون تفصيل الأصناف، يدخل مباشرة في ${k==='wb'?'تكلفة مبيعات البن':'تكلفة مبيعات منتجات المطبخ'}.</p></div>`;
- return ph(`🧮 الهالك والمصروفات والرواتب: ${AR[mi]} ${yr}`)+`<div class="g2">${wc('☕','هالك البن','wb','#7a4f2e')}${wc('🥐','هالك المطبخ','wk','#d9480f')}</div>${lines('o',M.ops,'🏢 المصروفات التشغيلية','a')}${lines('l',M.sal,'👥 الرواتب','c')}<div class="card"><h3>مصروفات الإهلاك والإطفاء</h3><div class="fm">${IN('dep',M.dep)} <span class="hint">تظهر في قائمة الدخل ويُحسب صافي الدخل بها وبدونها.</span></div></div>`;
+ return ph(`🧮 الهالك والمصروفات والرواتب: ${AR[mi]} ${yr}`,btn('xlMan','⬇ Excel')+' ')+`<div class="g2">${wc('☕','هالك البن','wb','#7a4f2e')}${wc('🥐','هالك المطبخ','wk','#d9480f')}</div>${lines('o',M.ops,'🏢 المصروفات التشغيلية','a')}${lines('l',M.sal,'👥 الرواتب','c')}<div class="card"><h3>مصروفات الإهلاك والإطفاء</h3><div class="fm">${IN('dep',M.dep)} <span class="hint">تظهر في قائمة الدخل ويُحسب صافي الدخل بها وبدونها.</span></div></div>`;
 }
 function pgCash(){
  if(br===ALL)return ph('💵 تصفية عهدة الكاش')+needBr();
  const m=calc1(br,yr,mi),rem=m.cash-m.exT;
- return ph(`💵 تصفية عهدة الكاش: ${AR[mi]} ${yr}`)+`<div class="sum"><div style="--c:#0b7285"><small>إجمالي الكاش الفعلي</small>${V(money(m.cash))}</div><div style="--c:#2f9e44"><small>(−) المصروفات الغذائية</small>${V(money(m.ex.fi+m.ex.fn))}</div><div style="--c:#e8590c"><small>(−) المصروفات النثرية</small>${V(money(m.ex.pi+m.ex.pn))}</div><div style="--c:${rem<0?'#c92a2a':'#087f5b'}"><small>الرصيد المتبقي من الكاش</small>${V(money(rem))}</div></div><div class="card"><p class="hint">يتم خصم كل المصروفات الغذائية والنثرية (بفاتورة وبدون) من إجمالي الكاش الفعلي. تُسجل المصروفات من صفحة المصروفات والفواتير.</p></div>`;
+ return ph(`💵 تصفية عهدة الكاش: ${AR[mi]} ${yr}`,btn('xlCash','⬇ Excel')+' ')+`<div class="sum"><div style="--c:#0b7285"><small>إجمالي الكاش الفعلي</small>${V(money(m.cash))}</div><div style="--c:#2f9e44"><small>(−) المصروفات الغذائية</small>${V(money(m.ex.fi+m.ex.fn))}</div><div style="--c:#e8590c"><small>(−) المصروفات النثرية</small>${V(money(m.ex.pi+m.ex.pn))}</div><div style="--c:${rem<0?'#c92a2a':'#087f5b'}"><small>الرصيد المتبقي من الكاش</small>${V(money(rem))}</div></div><div class="card"><p class="hint">يتم خصم كل المصروفات الغذائية والنثرية (بفاتورة وبدون) من إجمالي الكاش الفعلي. تُسجل المصروفات من صفحة المصروفات والفواتير.</p></div>`;
 }
 const AI=[['إجمالي الإيرادات',m=>m.rev,'#087f5b'],['إيرادات التوصيل',m=>m.del,'#e8590c'],['إيرادات الكاش',m=>m.cash,'#0b7285'],['إيرادات الشبكة',m=>m.net,'#1864ab'],['تكلفة المبيعات',m=>m.costT,'#c2410c'],['الرواتب',m=>m.sal,'#6741d9'],['المصروفات التشغيلية',m=>m.ops,'#1864ab'],['إجمالي المصروفات',m=>m.expAll,'#c92a2a'],['صافي الدخل',m=>m.ni0,'#087f5b']];
 let cmp=null;
@@ -317,7 +378,7 @@ function pgAna(){
  if(!ana){ana=[];for(let i=0;i<12;i++)if(CALC(br,yr,i).rev>0)ana.push(i)}
  const sel=[...ana].sort((a,b)=>a-b),C=sel.map(i=>CALC(br,yr,i));
  const rows=AI.map(([n,f,c])=>`<tr><td><b>${n}</b></td>${C.map((m,j)=>{const v=f(m),pv=j?f(C[j-1]):null,d=pv?(v-pv)/Math.abs(pv)*100:null;return`<td>${V(money(v))}<small>${V(pct(v,m.rev)+(d===null?'':` · ${d>=0?'▲':'▼'} ${Math.abs(d).toFixed(1)}%`))}</small>${BAR(m.rev?v/m.rev*100:0,c)}</td>`}).join('')}</tr>`).join('');
- return ph('📈 التحليل ومقارنة الشهور')+`<div class="card"><p class="hint">اختر الشهور للمقارنة. تحت كل رقم نسبته إلى إجمالي إيرادات نفس الشهر، ثم نسبة التغير عن الشهر المحدد قبله.</p><div class="fm">${AR.map((n,i)=>`<label class="ck"><input type="checkbox" data-ck="${i}"${ana.includes(i)?' checked':''}>${n}</label>`).join('')}</div>${sel.length?TB(TH('البند')+sel.map(i=>TH(AR[i],'a')).join(''),rows):'<p class="hint">اختر شهراً واحداً على الأقل.</p>'}</div>${anaSplit()}`;
+ return ph('📈 التحليل ومقارنة الشهور',btn('xlAna','⬇ Excel')+' ')+`<div class="card"><p class="hint">اختر الشهور للمقارنة. تحت كل رقم نسبته إلى إجمالي إيرادات نفس الشهر، ثم نسبة التغير عن الشهر المحدد قبله.</p><div class="fm">${AR.map((n,i)=>`<label class="ck"><input type="checkbox" data-ck="${i}"${ana.includes(i)?' checked':''}>${n}</label>`).join('')}</div>${sel.length?TB(TH('البند')+sel.map(i=>TH(AR[i],'a')).join(''),rows):'<p class="hint">اختر شهراً واحداً على الأقل.</p>'}</div>${anaSplit()}`;
 }
 function incList(){
  const m=CALC(br,yr,mi),M=br===ALL?null:mo(br,yr,mi),L=[],h=t=>L.push({k:'h',t}),r=(t,a)=>L.push({k:'r',t,a}),T=(t,a)=>L.push({k:'t',t,a});
@@ -340,7 +401,7 @@ function pgInc(){
 }
 const PAGES={map:pgMap,users:pgUsers,log:pgLog,home:pgHome,sales:pgSales,exp:pgExp,buy:pgBuy,stk:pgStk,man:pgMan,cash:pgCash,ana:pgAna,inc:pgInc};
 function build(){
- if(SBON){if(loading)return`<div class="card"><p>⏳ جارٍ التحميل…</p></div>`;if(!ME)return loginUI();if(!ME.role)return pendingUI();if(!S.branches.length)return`<div class="card"><p>لا توجد فروع مرتبطة بحسابك. تواصل مع المدير.</p>${HDR()}</div>`}
+ if(SBON){if(RECOV)return recUI();if(loading)return`<div class="card"><p>⏳ جارٍ التحميل…</p></div>`;if(!ME)return loginUI();if(!ME.role)return pendingUI();if(!S.branches.length)return`<div class="card"><p>لا توجد فروع مرتبطة بحسابك. تواصل مع المدير.</p>${HDR()}</div>`}
  const rv=i=>CALC(br,yr,i).rev;
  return`<header class="top"><input class="co" data-b="co" value="${esc(S.company)}" aria-label="اسم الشركة"${SBON&&ME.role!=='admin'?' readonly':''}><div class="tools"><button class="btn${pg==='home'?' on':''}" data-go="home">🏠 الرئيسية</button><select class="btn" data-b="yr" aria-label="السنة">${[2025,2026,2027,2028].map(y=>`<option value="${y}"${y===yr?' selected':''}>${y}</option>`).join('')}</select>${HDR()}</div></header>
  <nav class="tabs">${S.branches.map((b,i)=>`<button class="tab${b===br?' on':''}" style="--c:${BCOL[i%6]}" data-br="${esc(b)}">${esc(b)}</button>`).join('')}${TABX()}</nav>
@@ -476,6 +537,8 @@ async function saveSrc(src){if(!src||!src.f)return null;if(src.id)return src.id;
 async function act(s){
  const a0=s.split(':')[0];
  if(a0==='login')return doLogin();
+ if(a0==='forgot')return doForgot();
+ if(a0==='setNewPw')return doNewPw();
  if(a0==='logout')return doLogout();
  if(a0==='refresh')return doRefresh();
  if(a0==='addUser')return addUser();
@@ -485,6 +548,9 @@ async function act(s){
  if(a0==='delU2')return delUser(s.split(':')[1]);
  if(a0==='cancelU'){pwFor=null;delFor=null;return render()}
  if(a0==='refreshLog'){await loadAud();return}
+ if(a0==='xlUsers'&&ME&&ME.role==='admin')return xlm('المستخدمون',[['المستخدمون',rUsers()]],1);
+ if(a0==='xlLog'&&ME&&ME.role==='admin')return xlm('سجل العمليات',[['السجل',rLog()]],1);
+ if(a0==='xlMap')return xlm('ربط دفترة',[['ربط دفترة',rMap()]],1);
  if(RO&&!/^(xl|view)/.test(a0))return;
  const[a,x]=s.split(':'),M=(br===ALL||!br)?null:mo(br,yr,mi);
  if(a==='diag')return diag();
@@ -495,7 +561,8 @@ async function act(s){
  else if(a==='addo')M.ops.push({n:'',a:0});else if(a==='delo')M.ops.splice(+x,1);
  else if(a==='addl')M.sal.push({n:'',a:0});else if(a==='dell')M.sal.splice(+x,1);
  else if(a==='addz')M.xo.push({n:'',a:0,k:x==='i'?'i':'e'});else if(a==='delz')M.xo.splice(+x,1);
- else if(a==='addItem'){const n=$('#ni_n').value.trim();if(!n){msg='اكتب اسم الصنف أولاً.';return render()}IT(br).push({id:'i'+uid(),n,u:$('#ni_u').value.trim()||'وحدة',p:num($('#ni_p').value),t:$('#ni_t').value})}
+ else if(a==='addUnit'){const n=$('#ni_u2').value.trim();if(!n){msg='اكتب اسم الوحدة الجديدة أولاً.';return render()}addUnitName(n);UNSEL=n;msg='أُضيفت الوحدة «'+n+'» إلى القائمة.'}
+ else if(a==='addItem'){const n=$('#ni_n').value.trim();if(!n){msg='اكتب اسم الصنف أولاً.';return render()}addUnitName($('#ni_u2').value);UNSEL='';IT(br).push({id:'i'+uid(),n,u:($('#ni_u2').value.trim()||$('#ni_u').value||'وحدة'),p:num($('#ni_p').value),t:$('#ni_t').value})}
  else if(a==='delItem')S.bi[br]=IT(br).filter(i=>i.id!==x);
  else if(a==='showAdd'){showAdd=true;render();const i=$('#nb');if(i)i.focus();return}
  else if(a==='okBr'){const n=$('#nb').value.trim();showAdd=false;if(SBON){if(n&&!S.branches.includes(n)){try{await DB.addBranch(n);await doRefresh(true);br=n}catch(e){msg='تعذّرت إضافة الفرع: '+(e.message||e)}}render();return}if(n&&!S.branches.includes(n)){S.branches.push(n);S.bi[n]=[];br=n}}
@@ -528,10 +595,15 @@ async function act(s){
   advance();msg='تم تسجيل الفاتورة كتكلفة وأُضيفت إلى تكلفة مبيعات القسم.'+(draft?` تبقّى ${dq.length+1} فاتورة للمراجعة.`:'');
  }
  else if(a==='delPur')M.pur.splice(+x,1);
- else if(a==='xlSales')return xl('المبيعات',[['التاريخ','كيتا','جاهز','هنجرستيشن','نينجا','الشبكة بالنظام','الكاش بالنظام','عدد الطلبات','الخصم','المبيعات شامل الموازنة','الموازنة','البنك','الكاش الفعلي'],...M.days.map(d=>[d.d,...DL.map(([k])=>num(d[k])),...['net','cash','ord','disc'].map(k=>num(d[k])),DL.reduce((t,[k])=>t+num(d[k]),0)+num(d.cash)+num(d.bud),...['bud','bank','act'].map(k=>num(d[k]))])]);
- else if(a==='xlInv')return xl('الفواتير',[['التاريخ','رقم الفاتورة','اسم المورد','نوع الفاتورة','بفاتورة','الإجمالي بالضريبة','المبلغ بدون الضريبة','الضريبة'],...M.inv.map(v=>[v.d,v.no||'',v.sup,v.t==='food'?'غذائية':'نثرية',v.hi?'نعم':'لا',num(v.tot),num(v.tot)-num(v.tax),num(v.tax)])]);
- else if(a==='xlStk'){let to=0,tp=0,tc=0,tv=0;const rws=IT(br).map(it=>{const s=srow(br,yr,mi,it),ov=s.o*s.P,cv=s.c===undefined?null:s.c*s.P;to+=ov;tp+=s.pv;if(s.v!==null){tv+=s.v;tc+=cv}return[it.n,TYP[it.t][0],it.u,+s.P.toFixed(4),s.o,+ov.toFixed(2),s.p,+s.pv.toFixed(2),s.c===undefined?'':s.c,cv===null?'':+cv.toFixed(2),s.q===null?'':+s.q.toFixed(2),s.v===null?'':+s.v.toFixed(2)]});return xl('الجرد',[['الصنف','النوع','الوحدة','السعر','الكمية أول المدة','القيمة أول المدة','المشتريات (الكمية)','قيمة المشتريات','الكمية آخر المدة (الجرد)','القيمة آخر المدة','كمية الاستهلاك','قيمة الاستهلاك'],...rws,['الإجمالي','','','','',+to.toFixed(2),'',+tp.toFixed(2),'',+tc.toFixed(2),'',+tv.toFixed(2)]])}
- else if(a==='xlInc'){const{L,R}=incList();return xl('قائمة الدخل',[['البند','المبلغ','النسبة إلى إجمالي الإيراد'],...L.map(r=>r.k==='h'?[r.t,'','']:[r.t,+r.a.toFixed(2),R?+(r.a/R).toFixed(4):''])])}
+ else if(a==='xlSales')return xl('المبيعات',rSales(M));
+ else if(a==='xlInv')return xl('الفواتير',rInv(M));
+ else if(a==='xlStk')return xl('الجرد',rStk());
+ else if(a==='xlInc')return xl('قائمة الدخل',rInc());
+ else if(a==='xlBuy')return xlm('المخزون',[['أصناف المخزون',rBuyI()],['فواتير المشتريات',rBuyP(M)]]);
+ else if(a==='xlMan')return xl('الهالك والرواتب',rMan(M));
+ else if(a==='xlCash')return xl('عهدة الكاش',rCash());
+ else if(a==='xlAna')return xlm('التحليل',[['مقارنة الشهور',rAnaI()],['المبيعات والتكلفة',rAnaS()]]);
+ else if(a==='xlAll')return xlAll(M);
  save();render();
 }
 app.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='lg_p')doLogin()});
@@ -607,11 +679,11 @@ app.addEventListener('change',async e=>{
 
 /* ================= الاتصال بالسيرفر (Supabase) والأدوار ================= */
 const ROLEN={admin:'مدير',manager:'مسؤول فرع',owner:'مالك (عرض فقط)'};
-let ME=null,RO=false,BID={},BNAME={},VER={},SNAP={},USERS=null,AUD=null,syncT=null,syncMsg='',loading=SBON,authErr='',pwFor=null,delFor=null,audU='',audB='',cot=null,syncing=false,again=false;
+let ME=null,RO=false,BID={},BNAME={},VER={},SNAP={},USERS=null,AUD=null,syncT=null,syncMsg='',loading=SBON,authErr='',authOk='',RECOV=/type=recovery/.test(location.hash),pwFor=null,delFor=null,audU='',audB='',cot=null,syncing=false,again=false;
 const EMPTY=JSON.stringify(mk());
 const FS={async put(k,v){if(!SBON)return idb.put(k,v);await DB.upload(BID[br]+'/'+k,v)},async get(k){if(!SBON)return idb.get(k);return DB.download(BID[br]+'/'+k)}};
 const DBR={
- init(){this.c=supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true}})},
+ init(){this.c=supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true}});this.c.auth.onAuthStateChange(ev=>{if(ev==='PASSWORD_RECOVERY'){RECOV=true;render()}})},
  async q(p){const{data,error}=await p;if(error)throw error;return data},
  async session(){const{data}=await this.c.auth.getSession();return data.session},
  async login(e,p){const{error}=await this.c.auth.signInWithPassword({email:e,password:p});if(error)throw error},
@@ -637,7 +709,7 @@ const DB=window.__KAFID_DB||DBR;
 function hydrate(r){
  BID={};BNAME={};VER={};SNAP={};
  S={company:'كافيد',cur:'ر.س',branches:[],bi:{},mo:{},dmap:{}};
- r.st.forEach(x=>{if(x.key==='company')S.company=x.value;if(x.key==='currency')S.cur=x.value;if(x.key==='daftra_map'&&x.value&&typeof x.value==='object')S.dmap=x.value});
+ r.st.forEach(x=>{if(x.key==='company')S.company=x.value;if(x.key==='currency')S.cur=x.value;if(x.key==='daftra_map'&&x.value&&typeof x.value==='object')S.dmap=x.value;if(x.key==='units'&&Array.isArray(x.value))S.units=x.value});
  r.br.forEach(b=>{BID[b.name]=b.id;BNAME[b.id]=b.name;S.branches.push(b.name);S.bi[b.name]=[]});
  r.it.forEach(x=>{const n=BNAME[x.branch_id];if(!n)return;S.bi[n]=x.items||[];VER['i|'+x.branch_id]=x.version;SNAP['i|'+x.branch_id]=JSON.stringify(S.bi[n])});
  r.mo.forEach(x=>{const n=BNAME[x.branch_id];if(!n)return;const k=`${n}|${x.y}|${x.m}`;S.mo[k]=x.data;mo(n,x.y,x.m);VER[k]=x.version;SNAP[k]=JSON.stringify(S.mo[k])});
@@ -657,6 +729,20 @@ async function enter(){
   else{ME=await DB.me();if(ME&&ME.role){hydrate(await DB.loadAll())}}
  }catch(e){ME=null;authErr='تعذّر الاتصال بالسيرفر: '+((e&&e.message)||'')}
  loading=false;render();
+}
+async function doForgot(){
+ const e=(($('#lg_e')||{}).value||'').trim();authOk='';
+ if(!e){authErr='اكتب بريدك في خانة البريد أولاً ثم اضغط «نسيت كلمة المرور».';return render()}
+ try{const{error}=await DB.c.auth.resetPasswordForEmail(e,{redirectTo:location.origin+location.pathname});if(error)throw error;authErr='';authOk='إن كان البريد مسجلاً فقد أُرسل إليه رابط تعيين كلمة المرور. افتح الرابط من نفس المتصفح.'}
+ catch(err){authErr='تعذّر إرسال الرابط: '+((err&&err.message)||'')}
+ render();
+}
+async function doNewPw(){
+ const a=($('#rc_p')||{}).value||'',b=($('#rc_p2')||{}).value||'';
+ if(a.length<8){authErr='كلمة المرور 8 أحرف على الأقل.';return render()}
+ if(a!==b){authErr='كلمتا المرور غير متطابقتين.';return render()}
+ try{const{error}=await DB.c.auth.updateUser({password:a});if(error)throw error;RECOV=false;authErr='';authOk='';history.replaceState(null,'',location.pathname);await enter()}
+ catch(err){authErr='تعذّر الحفظ: '+((err&&err.message)||'')+' (قد تحتاج طلب رابط جديد).';render()}
 }
 async function doLogin(){
  const e=($('#lg_e')||{}).value||'',p=($('#lg_p')||{}).value||'';
@@ -726,7 +812,8 @@ function TABX(){
  return allB+addB;
 }
 const NAVX=()=>{const m=['map','ربط دفترة','🔗','#0b7285'];if(!SBON||!ME)return[...NAV,m];if(ME.role==='admin')return[...NAV,m,['users','المستخدمون والصلاحيات','👤','#364fc7'],['log','سجل العمليات','🕵️','#495057']];if(ME.role==='owner')return[...NAV,m];return NAV};
-const loginUI=()=>`<div class="card" style="max-width:420px;margin:60px auto"><h2 style="text-align:center">🔐 تسجيل الدخول</h2><div class="fm" style="flex-direction:column;align-items:stretch"><label>البريد الإلكتروني<input id="lg_e" type="email" autocomplete="username" style="width:100%"></label><label>كلمة المرور<input id="lg_p" type="password" autocomplete="current-password" style="width:100%"></label>${authErr?`<div class="alert">${esc(authErr)}</div>`:''}<button class="pick" data-act="login">دخول</button></div></div>`;
+const loginUI=()=>`<div class="card" style="max-width:420px;margin:60px auto"><h2 style="text-align:center">🔐 تسجيل الدخول</h2><div class="fm" style="flex-direction:column;align-items:stretch"><label>البريد الإلكتروني<input id="lg_e" type="email" autocomplete="username" style="width:100%"></label><label>كلمة المرور<input id="lg_p" type="password" autocomplete="current-password" style="width:100%"></label>${authErr?`<div class="alert">${esc(authErr)}</div>`:''}${authOk?`<div class="alert" style="background:#d3f9d8;color:#087f5b">${esc(authOk)}</div>`:''}<button class="pick" data-act="login">دخول</button><button class="back" data-act="forgot">نسيت كلمة المرور؟ (اكتب بريدك أعلاه ثم اضغط)</button></div></div>`;
+const recUI=()=>`<div class="card" style="max-width:420px;margin:60px auto"><h2 style="text-align:center">🔑 كلمة مرور جديدة</h2><div class="fm" style="flex-direction:column;align-items:stretch"><label>كلمة المرور الجديدة (8 أحرف على الأقل)<input id="rc_p" type="password" autocomplete="new-password" style="width:100%"></label><label>أعد كتابتها<input id="rc_p2" type="password" autocomplete="new-password" style="width:100%"></label>${authErr?`<div class="alert">${esc(authErr)}</div>`:''}<button class="pick" data-act="setNewPw">حفظ ودخول</button></div></div>`;
 const pendingUI=()=>`<div class="card" style="max-width:480px;margin:60px auto;text-align:center"><h2>⏳ حسابك قيد الاعتماد</h2><p class="hint">سجّلت الدخول بـ ${esc(ME.email)} لكن لم تُحدَّد صلاحياتك بعد. تواصل مع المدير.</p><button class="back" data-act="logout">خروج</button></div>`;
 
 /* ---------- المستخدمون (للمدير) ---------- */
@@ -736,14 +823,14 @@ function pgMap(){
  if(SBON&&ME&&ME.role==='manager')return ph('🔗 ربط دفترة')+`<div class="card"><p class="hint">هذه الصفحة للمدير والمالك فقط.</p></div>`;
  const D=S.dmap||{},done=DMAP.filter(([k])=>D[k]&&(D[k].c||'').trim()).length;
  const rows=DMAP.map(([k,n])=>`<tr><td style="text-align:start;font-weight:700">${n}</td><td>${IN(`dm:${k}:c`,(D[k]||{}).c||'','text')}</td><td>${IN(`dm:${k}:n`,(D[k]||{}).n||'','text')}</td></tr>`).join('');
- return ph('🔗 ربط دفترة (الحسابات الآلية)')+`<div class="card"><p class="hint">اكتب لكل بند الحساب في شجرة حسابات دفترة الذي تُرحَّل عليه القيود تلقائياً عند طلب الترحيل. رقم الحساب كما يظهر في دفترة، والاسم للتوضيح. لا يُكتب أي مفتاح أو كلمة مرور هنا. المكتمل: <b>${done}</b> من ${DMAP.length}.</p>${TB(TH('البند')+TH('رقم الحساب في دفترة')+TH('اسم الحساب'),rows)}</div>`;
+ return ph('🔗 ربط دفترة (الحسابات الآلية)',btn('xlMap','⬇ Excel')+' ')+`<div class="card"><p class="hint">اكتب لكل بند الحساب في شجرة حسابات دفترة الذي تُرحَّل عليه القيود تلقائياً عند طلب الترحيل. رقم الحساب كما يظهر في دفترة، والاسم للتوضيح. لا يُكتب أي مفتاح أو كلمة مرور هنا. المكتمل: <b>${done}</b> من ${DMAP.length}.</p>${TB(TH('البند')+TH('رقم الحساب في دفترة')+TH('اسم الحساب'),rows)}</div>`;
 }
 function pgUsers(){
  if(!ME||ME.role!=='admin')return ph('👤 المستخدمون')+`<div class="card"><p class="hint">هذه الصفحة للمدير فقط.</p></div>`;
  const bro=S.branches.map(b=>[BID[b],b]),rn=Object.entries(ROLEN);
  const rows=(USERS||[]).map(u=>{const me=u.id===ME.id;return`<tr><td>${esc(u.full_name||'—')}<small>${esc(u.email)}</small></td><td><select data-u="${u.id}:role" style="min-width:150px"${me?' disabled':''}><option value=""${!u.role?' selected':''}>غير معتمد</option>${rn.map(([k,n])=>`<option value="${k}"${u.role===k?' selected':''}>${n}</option>`).join('')}</select></td><td><select data-u="${u.id}:branch_id" style="min-width:130px"${u.role==='manager'&&!me?'':' disabled'}><option value="">—</option>${bro.map(([i,n])=>`<option value="${i}"${u.branch_id===i?' selected':''}>${esc(n)}</option>`).join('')}</select></td><td>${me?'<small>حسابك</small>':`<button class="back" data-act="pw:${u.id}">🔑 كلمة مرور</button> ${delFor===u.id?`<button class="pick" data-act="delU2:${u.id}">تأكيد الحذف</button> <button class="back" data-act="cancelU">إلغاء</button>`:`<button class="del" data-act="delU:${u.id}">🗑</button>`}`}</td></tr>`}).join('');
  const pwRow=pwFor?`<div class="card" style="border:3px solid #364fc7"><h3>🔑 كلمة مرور جديدة لـ ${esc(((USERS||[]).find(u=>u.id===pwFor)||{}).email||'')}</h3><div class="fm"><input id="pw_v" type="text" placeholder="8 أحرف على الأقل" style="width:240px"><button class="pick" data-act="okPw">حفظ</button><button class="back" data-act="cancelU">إلغاء</button></div></div>`:'';
- return ph('👤 المستخدمون والصلاحيات')+`<div class="card"><h3>➕ إضافة مستخدم</h3><div class="fm"><label>الاسم<input id="nu_n" type="text"></label><label>البريد الإلكتروني<input id="nu_e" type="email" style="width:210px"></label><label>كلمة المرور (8 أحرف+)<input id="nu_p" type="text" style="width:170px"></label><label>الدور<select id="nu_r">${rn.map(([k,n])=>`<option value="${k}"${k==='manager'?' selected':''}>${n}</option>`).join('')}</select></label><label>الفرع (لمسؤول الفرع)<select id="nu_b">${bro.map(([i,n])=>`<option value="${i}">${esc(n)}</option>`).join('')}</select></label>${btn('addUser','＋ إضافة')}</div><p class="hint">مسؤول الفرع يرى ويعدّل فرعه فقط. المالك يرى كل الفروع والصفحات بدون تعديل. المدير له كل الصلاحيات. أعطِ المستخدم بريده وكلمة مروره، وسيدخل من نفس الرابط.</p></div>${pwRow}<div class="card"><h3>المستخدمون الحاليون</h3>${USERS?TB(TH('المستخدم')+TH('الدور','a')+TH('الفرع','b')+TH(''),rows||'<tr><td colspan="4">لا يوجد.</td></tr>'):'<p class="hint">⏳ جارٍ التحميل…</p>'}<p class="hint">يمكنك تغيير الدور أو الفرع مباشرة من القوائم، ويسري فوراً.</p></div>`;
+ return ph('👤 المستخدمون والصلاحيات',btn('xlUsers','⬇ Excel')+' ')+`<div class="card"><h3>➕ إضافة مستخدم</h3><div class="fm"><label>الاسم<input id="nu_n" type="text"></label><label>البريد الإلكتروني<input id="nu_e" type="email" style="width:210px"></label><label>كلمة المرور (8 أحرف+)<input id="nu_p" type="text" style="width:170px"></label><label>الدور<select id="nu_r">${rn.map(([k,n])=>`<option value="${k}"${k==='manager'?' selected':''}>${n}</option>`).join('')}</select></label><label>الفرع (لمسؤول الفرع)<select id="nu_b">${bro.map(([i,n])=>`<option value="${i}">${esc(n)}</option>`).join('')}</select></label>${btn('addUser','＋ إضافة')}</div><p class="hint">مسؤول الفرع يرى ويعدّل فرعه فقط. المالك يرى كل الفروع والصفحات بدون تعديل. المدير له كل الصلاحيات. أعطِ المستخدم بريده وكلمة مروره، وسيدخل من نفس الرابط.</p></div>${pwRow}<div class="card"><h3>المستخدمون الحاليون</h3>${USERS?TB(TH('المستخدم')+TH('الدور','a')+TH('الفرع','b')+TH(''),rows||'<tr><td colspan="4">لا يوجد.</td></tr>'):'<p class="hint">⏳ جارٍ التحميل…</p>'}<p class="hint">يمكنك تغيير الدور أو الفرع مباشرة من القوائم، ويسري فوراً.</p></div>`;
 }
 async function addUser(){
  const g=id=>($('#'+id)||{}).value||'',role=g('nu_r'),body={action:'create',full_name:g('nu_n').trim(),email:g('nu_e').trim(),password:g('nu_p'),role,branch_id:role==='manager'?g('nu_b'):null};
@@ -788,7 +875,7 @@ function pgLog(){
  const A=(AUD||[]).filter(r=>(!audU||r.email===audU)&&(!audB||r.branch_id===audB)),us=[...new Set((AUD||[]).map(r=>r.email).filter(Boolean))];
  const tm=t=>new Date(t).toLocaleString('en-GB',{timeZone:'Asia/Riyadh',hour12:false,dateStyle:'short',timeStyle:'short'});
  const rows=A.map(r=>`<tr><td>${esc(tm(r.at))}</td><td>${esc(r.email||'—')}</td><td>${esc(BNAME[r.branch_id]||'—')}</td><td>${esc(ALAB[r.action]||r.action)} ${esc(audTarget(r.target))}</td><td style="text-align:start">${esc(audDetail(r))}</td></tr>`).join('');
- return ph('🕵️ سجل العمليات',btn('refreshLog','🔄 تحديث')+' ')+`<div class="card"><div class="fm"><label>المستخدم<select data-af="u"><option value="">الكل</option>${us.map(e=>`<option value="${esc(e)}"${e===audU?' selected':''}>${esc(e)}</option>`).join('')}</select></label><label>الفرع<select data-af="b"><option value="">الكل</option>${S.branches.map(b=>`<option value="${BID[b]}"${BID[b]===audB?' selected':''}>${esc(b)}</option>`).join('')}</select></label></div><p class="hint">يُكتب السجل تلقائياً من السيرفر عند كل إضافة أو تعديل أو حذف للبيانات (آخر 400 عملية)، ولا يمكن لأي مستخدم تعديله. الأوقات بتوقيت الرياض.</p>${AUD?TB(TH('الوقت')+TH('المستخدم','a')+TH('الفرع','b')+TH('العملية','c')+TH('التفاصيل','d'),rows||'<tr><td colspan="5">لا توجد عمليات.</td></tr>'):'<p class="hint">⏳ جارٍ التحميل…</p>'}</div>`;
+ return ph('🕵️ سجل العمليات',btn('refreshLog','🔄 تحديث')+' '+btn('xlLog','⬇ Excel')+' ')+`<div class="card"><div class="fm"><label>المستخدم<select data-af="u"><option value="">الكل</option>${us.map(e=>`<option value="${esc(e)}"${e===audU?' selected':''}>${esc(e)}</option>`).join('')}</select></label><label>الفرع<select data-af="b"><option value="">الكل</option>${S.branches.map(b=>`<option value="${BID[b]}"${BID[b]===audB?' selected':''}>${esc(b)}</option>`).join('')}</select></label></div><p class="hint">يُكتب السجل تلقائياً من السيرفر عند كل إضافة أو تعديل أو حذف للبيانات (آخر 400 عملية)، ولا يمكن لأي مستخدم تعديله. الأوقات بتوقيت الرياض.</p>${AUD?TB(TH('الوقت')+TH('المستخدم','a')+TH('الفرع','b')+TH('العملية','c')+TH('التفاصيل','d'),rows||'<tr><td colspan="5">لا توجد عمليات.</td></tr>'):'<p class="hint">⏳ جارٍ التحميل…</p>'}</div>`;
 }
 
 boot();
