@@ -113,6 +113,11 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .acct{display:inline-block;background:#e6fcf5;color:#087f5b;border-radius:999px;padding:2px 10px;font-size:.82rem;font-weight:700;white-space:nowrap}
 .acct.no{background:#fff3bf;color:#a65e00}.lnk{border:0;background:none;color:#1864ab;text-decoration:underline;font-weight:700;cursor:pointer;padding:0 4px}
 .cc{background:var(--surface);border-radius:20px;padding:16px 18px 10px;box-shadow:0 6px 22px rgba(40,30,90,.12);margin-bottom:14px}.cch{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}.cch b{font-size:1.1rem}.cch small{display:block;color:var(--muted);font-weight:600}.lg{display:flex;gap:14px;flex-wrap:wrap}.lg span{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:.85rem}.lg i{width:12px;height:12px;border-radius:4px;display:inline-block}.cs{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0 6px}.cs div{background:var(--surface2);border-radius:12px;padding:6px 14px}.cs small{display:block;font-size:.75rem;color:var(--muted);font-weight:700}.cs b{font-size:1rem}.cc svg{width:100%;height:auto;display:block}.cc .emp{padding:30px;text-align:center;color:var(--muted)}.xbar{display:flex;justify-content:flex-end;margin:0 0 10px}
+
+.sn{display:flex;align-items:center;gap:8px;border:0;border-radius:14px;padding:9px 12px;background:var(--surface2);color:var(--ink);font-weight:800;text-align:right;border-inline-start:6px solid var(--c)}
+.sn.on{background:var(--c);color:#fff}.sn:hover{filter:brightness(.97)}
+.sg{display:flex;flex-direction:column;gap:6px}
+@media (max-width:860px){.side{flex-direction:column;overflow:visible}.side h3{display:block}.sg{flex-direction:row;overflow-x:auto;padding-bottom:4px}.sn{flex:none;white-space:nowrap}}
 </style>
 </head>
 <body>
@@ -286,8 +291,7 @@ function pgHome(){
   ${m.oi?`<div class="inc">➕ إيرادات أخرى: ${V(money(m.oi))} ${VI(P(m.oi))}</div>`:''}</div>`;
  const ni=`<div class="net" style="--c:${m.ni0<0?'#c92a2a':'#087f5b'};--c2:${m.ni0<0?'#e8590c':'#2f9e44'}"><div><small>📑 صافي الدخل (بدون الإهلاك والإطفاء)</small>${V(money(m.ni0))}</div>${VI(P(m.ni0)+' من الإيرادات')}</div>`;
  const exp=`<div class="pc"><div class="ph3"><b>💳 المصروفات النقدية (غذائية ونثرية)</b><span>${V(money(m.exT))}</span></div>${rl([['غذائية بفاتورة',m.ex.fi,'#2f9e44'],['غذائية بدون فاتورة',m.ex.fn,'#74b816'],['نثرية بفاتورة',m.ex.pi,'#e8590c'],['نثرية بدون فاتورة',m.ex.pn,'#f08c00']],m.exT||R)}</div>`;
- return`<div class="xbar">${btn('xlAll','⬇ تصدير كل الأقسام Excel')}</div><div class="hgrid">${hero}${costs}</div>${chartRev()}${chartCost()}${ni}${exp}
- <h3 style="color:#14121f;margin:10px 4px 6px">⚙️ العمليات</h3><div class="gn">${NAVX().map(([g,t,i,c])=>`<button class="nav" data-go="${g}" style="--c:${c}"><span>${i}</span>${t}</button>`).join('')}</div>`;
+ return`<div class="xbar">${btn('xlAll','⬇ تصدير كل الأقسام Excel')}</div><div class="hgrid">${hero}${costs}</div>${chartRev()}${chartCost()}${ni}${exp}`;
 }
 function pgSales(){
  if(br===ALL)return ph('📋 جدول تفاصيل المبيعات')+needBr();
@@ -405,7 +409,7 @@ function build(){
  const rv=i=>CALC(br,yr,i).rev;
  return`<header class="top"><input class="co" data-b="co" value="${esc(S.company)}" aria-label="اسم الشركة"${SBON&&ME.role!=='admin'?' readonly':''}><div class="tools"><button class="btn${pg==='home'?' on':''}" data-go="home">🏠 الرئيسية</button><select class="btn" data-b="yr" aria-label="السنة">${[2025,2026,2027,2028].map(y=>`<option value="${y}"${y===yr?' selected':''}>${y}</option>`).join('')}</select>${HDR()}</div></header>
  <nav class="tabs">${S.branches.map((b,i)=>`<button class="tab${b===br?' on':''}" style="--c:${BCOL[i%6]}" data-br="${esc(b)}">${esc(b)}</button>`).join('')}${TABX()}</nav>
- <div class="lay"><aside class="side"><h3>📅 الشهور</h3>${AR.map((n,i)=>`<button class="mb${i===mi?' on':''}" style="--h:${i*30}" data-mo="${i}"><span>${n}</span><small>${V(rv(i)>0?kf(rv(i)):'—')}</small></button>`).join('')}</aside><main>${PAGES[pg]()}<p class="note">${esc(msg)||(SBON?'البيانات محفوظة على الخادم (Supabase). الإصدار: 23-11-2026 ✔ رسوم بيانية · وحدات · تصدير Excel · استرجاع كلمة المرور':'البيانات تُحفظ في هذا المتصفح فقط. الأرقام الحالية تجريبية.')}</p>${diagTxt?`<pre class="alert" style="white-space:pre-wrap">${esc(diagTxt)}</pre>`:''}</main></div>`;
+ <div class="lay"><aside class="side"><h3>📂 القوائم</h3><div class="sg">${[['home','الرئيسية','🏠','var(--accent)'],...NAVX()].map(([g,t,ic,c])=>`<button class="sn${pg===g?' on':''}" style="--c:${c}" data-go="${g}"><span>${ic}</span>${t}</button>`).join('')}</div><h3>📅 الشهور</h3><div class="sg sm">${AR.map((n,i)=>`<button class="mb${i===mi?' on':''}" style="--h:${i*30}" data-mo="${i}"><span>${n}</span><small>${V(rv(i)>0?kf(rv(i)):'—')}</small></button>`).join('')}</div></aside><main>${PAGES[pg]()}<p class="note">${esc(msg)||(SBON?'البيانات محفوظة على الخادم (Supabase). الإصدار: 23-11-2026 ✔ رسوم بيانية · وحدات · تصدير Excel · استرجاع كلمة المرور':'البيانات تُحفظ في هذا المتصفح فقط. الأرقام الحالية تجريبية.')}</p>${diagTxt?`<pre class="alert" style="white-space:pre-wrap">${esc(diagTxt)}</pre>`:''}</main></div>`;
 }
 const app=$('#root');
 let dq=[],draft=null;
@@ -748,7 +752,7 @@ async function doLogin(){
  const e=($('#lg_e')||{}).value||'',p=($('#lg_p')||{}).value||'';
  if(!e||!p){authErr='أدخل البريد وكلمة المرور.';return render()}
  try{await DB.login(e.trim(),p);authErr='';await enter();if(ME&&ME.role)DB.log('login',{}).catch(()=>{})}
- catch(err){authErr='البريد أو كلمة المرور غير صحيحة.';render()}
+ catch(err){const st=err&&err.status,m=String((err&&err.message)||err||'');authErr=(st===400||st===401||/invalid login|credentials/i.test(m))?'البريد أو كلمة المرور غير صحيحة.':(/rate|429|too many/i.test(m)||st===429)?'محاولات كثيرة. انتظر دقائق ثم أعد المحاولة.':'تعذّر الاتصال بالخادم. افتح اللوحة من رابط GitHub. (التفاصيل: '+m.slice(0,80)+')';render()}
 }
 async function doLogout(){
  try{await syncNow()}catch(e){}
