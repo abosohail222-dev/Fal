@@ -141,6 +141,11 @@ tr.over td{background:#ffe3e3!important}
 .okc{background:#e6fcf5;border:2px solid #087f5b;color:#05543d;border-radius:12px;padding:8px 12px;font-weight:700;margin:8px 0}
 .lay>.side{order:1}.lay>main{order:2}.lay>.side2{order:3}
 @media (max-width:860px){.lay{grid-template-columns:minmax(0,1fr)!important}.lay>*{min-width:0}.lay>.side{order:1}.lay>.side2{order:2}.lay>main{order:3}}
+.side h3.mh{margin:0 0 4px;padding:9px 10px;border-radius:14px;color:#fff;text-align:center;font-size:1rem;font-weight:900;letter-spacing:.2px}
+.mh1{background:linear-gradient(135deg,#6741d9,#9c36b5)}.mh2{background:linear-gradient(135deg,#0b7285,#087f5b)}
+.homebig,.tab.homeb{background:linear-gradient(135deg,#ffd43b,#fab005)!important;color:#3d2c00!important;border:2px solid #f08c00!important;font-weight:900!important;font-size:1.08rem!important;box-shadow:0 4px 12px rgba(250,176,5,.35)}
+.homebig{display:block;width:100%;padding:12px 10px;border-radius:16px;cursor:pointer;font-family:inherit;margin-bottom:6px}
+.homebig.on{outline:3px solid #7a4a00}.tab.homeb{padding:10px 22px!important}
 </style>
 </head>
 <body>
@@ -284,7 +289,7 @@ function xlAll(M){
  return xlm('تقرير شامل',L);
 }
 const OPSN=['buy','stk','man','sales','exp','sal','adv','ot','cash'];
-const NAV=[['buy','المخزون','📦','#c2255c'],['stk','الجرد','✅','#5f3dc4'],['man','مصروفات الهالك والإهلاك','🧮','#d9480f'],['sales','جدول تفاصيل المبيعات','📋','#1864ab'],['exp','المصروفات التشغيلية','🧾','#087f5b'],['sal','الرواتب','👥','#6741d9'],['adv','سلف الموظفين','💸','#9c36b5'],['ot','الإضافي والخصومات','⏱️','#e67700'],['cash','تصفية عهدة الكاش','💵','#0b7285'],['ana','التحليل','📈','#a61e4d'],['anaS','تحليل منتجات البن والمطبخ','☕','#a61e4d',1],['anaB','تحليل البن','🫘','#7a4f2e',1],['anaK','تحليل منتجات المطبخ','🥐','#d9480f',1],['inc','قائمة الدخل','📑','#7a4f2e'],['cmpb','مقارنة الفروع','🏪','#364fc7']];
+const NAV=[['buy','المخزون','📦','#c2255c'],['stk','الجرد','✅','#5f3dc4'],['man','مصروفات الهالك والإهلاك','🧮','#d9480f'],['sales','جدول تفاصيل المبيعات','📋','#1864ab'],['exp','المصروفات التشغيلية','🧾','#087f5b'],['sal','الرواتب','👥','#6741d9'],['adv','سلف الموظفين','💸','#9c36b5'],['ot','الإضافي والخصومات','⏱️','#e67700'],['cash','تصفية عهدة الكاش','💵','#0b7285'],['ana','التحليل','📈','#a61e4d'],['anaS','تحليل منتجات البن والمطبخ','☕','#a61e4d',1],['anaB','تحليل البن','🫘','#7a4f2e',1],['anaK','تحليل منتجات المطبخ','🥐','#d9480f',1],['anaE','تحليل المصروفات التشغيلية','🧾','#087f5b',1],['inc','قائمة الدخل','📑','#7a4f2e'],['cmpb','مقارنة الفروع','🏪','#364fc7']];
 let ana=null;
 const IN=(p,v,t)=>`<input data-b="${p}" type="${t||'number'}"${t?'':' step="any" inputmode="decimal"'} value="${t?esc(v):(has(v)?+(+v).toFixed(2):'')}">`;
 const TH=(t,c)=>`<th${c?` class="${c}"`:''}>${t}</th>`;
@@ -525,6 +530,21 @@ function anaCData(ci){const[t,ic,n,sk]=CATS[ci];if(!acm){acm=[];for(let i=0;i<12
 const ctol=()=>has(S.ctol)?num(S.ctol):2;
 function cmpCost(c,p,sv,cv){const s=sv(c),ps=sv(p),k=cv(c),pk=cv(p);if(s===null||ps===null||!ps||!pk)return null;const sc=(s-ps)/ps*100,cc=(k-pk)/pk*100,exp=pk*s/ps,gap=k-exp,gp=cc-sc,gpp=exp?gap/exp*100:0,bad=Math.abs(gpp)>ctol();return{sc,cc,exp,gap,gp,gpp,bad}}
 const cmpMsg=x=>!x?'—':x.bad?(x.gap>0?`⚠ التكلفة أعلى من المتوقع بـ ${money(x.gap)}`:`⚠ التكلفة أقل من المتوقع بـ ${money(-x.gap)} (راجع الجرد)`):'✔ متناسبة مع المبيعات';
+let aem=null;
+function opsBreak(b,y,m){const o={},B=b===ALL?S.branches:[b];ECATS.forEach(([k,t])=>o['c:'+k]=0);B.forEach(bb=>{const c=calc1(bb,y,m);ECATS.forEach(([k])=>o['c:'+k]+=c.exc[k]||0);(mo(bb,y,m).ops||[]).forEach(x=>{const n='f:'+((x.n||'بند بدون اسم').trim());o[n]=(o[n]||0)+num(x.a)})});return o}
+function anaEData(){if(!aem){aem=[];for(let i=0;i<12;i++){const c=CALC(br,yr,i);if(c.rev>0||c.ops>0)aem.push(i)}}const sel=[...aem].sort((a,b)=>a-b),O=sel.map(i=>opsBreak(br,yr,i)),C=sel.map(i=>CALC(br,yr,i)),keys=[...new Set([...ECATS.map(([k])=>'c:'+k),...O.flatMap(o=>Object.keys(o).filter(k=>k[0]==='f'))])];const lab=k=>k[0]==='c'?ECATS.find(e=>'c:'+e[0]===k)[1]+' (فواتير)':k.slice(2);return{sel,O,C,keys,lab}}
+function pgAnaE(){
+ const{sel,O,C,keys,lab}=anaEData(),pc=v=>(v>0?'+':'')+v.toFixed(1)+'%';
+ const cell=(v,pv,j,rev)=>`<td>${money(v)}${j&&pv!==null?`<small>${dif(v,pv,true)}</small>`:''}<small>${pct(v,rev)} من الإيرادات</small></td>`;
+ const rows=keys.map(k=>`<tr><td style="text-align:start"><b>${esc(lab(k))}</b></td>${O.map((o,j)=>cell(o[k]||0,j?(O[j-1][k]||0):null,j,C[j].rev)).join('')}</tr>`).join('');
+ const tot=`<tr><td><b>إجمالي المصروفات التشغيلية</b></td>${C.map((m,j)=>cell(m.ops,j?C[j-1].ops:null,j,m.rev)).join('')}</tr><tr><td><b>إجمالي الإيرادات</b></td>${C.map((m,j)=>`<td>${money(m.rev)}${j?`<small>${dif(m.rev,C[j-1].rev,false)}</small>`:''}</td>`).join('')}</tr>`;
+ const pi=mi?mi-1:11,py=mi?yr:yr-1,cu=CALC(br,yr,mi),pv=CALC(br,py,pi),ob=opsBreak(br,yr,mi),op=opsBreak(br,py,pi);
+ let top='';if(cu.ops&&pv.ops){const ch=(cu.ops-pv.ops)/pv.ops*100,rc=pv.rev?(cu.rev-pv.rev)/pv.rev*100:0,up=Object.keys(ob).map(k=>[k,ob[k]-(op[k]||0)]).sort((a,b)=>b[1]-a[1])[0];top=`<div class="${ch>rc+5?'warnc':'okc'}">${AR[mi]} مقارنة بـ ${AR[pi]}: المصروفات التشغيلية ${pc(ch)} (${money(cu.ops)} مقابل ${money(pv.ops)})، والإيرادات ${pc(rc)}.${up&&up[1]>0?` أكبر زيادة في «${esc(lab(up[0]))}» بـ ${money(up[1])}.`:''}</div>`}
+ const L=ECATS.map(([k,t,a,c])=>({k:'c:'+k,n:t,c})).concat([{k:'fx',n:'مصروفات ثابتة',c:'#868e96'}]),D=AR.map((nn,i)=>{const o=opsBreak(br,yr,i),d={i,n:nn,fx:0};Object.keys(o).forEach(k=>{if(k[0]==='c')d[k]=o[k];else d.fx+=o[k]});ECATS.forEach(([k])=>d['c:'+k]=d['c:'+k]||0);return d}),TY=D.reduce((a,d)=>a+L.reduce((s,x)=>s+d[x.k],0),0);
+ const chart=ccard(`🧾 المصروفات التشغيلية الشهرية — ${yr}`,`${scope()} · اضغط على أي شهر للانتقال إليه`,L,[['إجمالي السنة',money(TY)]],TY>0?barSVG(D,L,'stack'):'<div class="emp">لا توجد مصروفات تشغيلية في هذه السنة بعد.</div>');
+ return ph(`🧾 تحليل المصروفات التشغيلية: ${yr}`,btn('xlAnaE','⬇ Excel')+' ')+top+chart+`<div class="card" style="border-top:6px solid #087f5b"><h3>📊 مقارنة الشهور</h3><div class="fm">${AR.map((nm,i)=>`<label class="ck"><input type="checkbox" data-aem="${i}"${aem.includes(i)?' checked':''}>${nm}</label>`).join('')}</div>${sel.length?TB(TH('البند')+sel.map(i=>TH(AR[i]+' '+yr,'a')).join(''),rows,`<tfoot>${tot}</tfoot>`):'<p class="hint">اختر شهراً واحداً على الأقل.</p>'}<p class="hint">البنود: تصنيفات الفواتير (غذائية، غير غذائية، نظافة، صيانة) من صفحة المصروفات التشغيلية، والمصروفات الثابتة (إيجار، كهرباء…) باسم كل بند. تحت كل رقم: الزيادة أو النقص عن الشهر المختار اللي قبله (الزيادة بالأحمر)، ونسبته من إيرادات الشهر.</p></div>`;
+}
+const rAnaE=()=>{const{sel,O,C,keys,lab}=anaEData();return[['البند',...sel.map(i=>AR[i]+' '+yr)],...keys.map(k=>[lab(k),...O.map(o=>+(o[k]||0).toFixed(2))]),['إجمالي المصروفات التشغيلية',...C.map(m=>+m.ops.toFixed(2))],['إجمالي الإيرادات',...C.map(m=>+m.rev.toFixed(2))],['نسبة المصروفات من الإيرادات',...C.map(m=>m.rev?+(m.ops/m.rev).toFixed(4):'')]]};
 function pgAnaC(ci){
  const[t,ic,n,sk,c]=CATS[ci],{sel,C,F,sv,cv}=anaCData(ci),pc=v=>(v>0?'+':'')+v.toFixed(1)+'%';
  const rows=F.map(([lab,f,bad,pp])=>`<tr><td><b>${lab}</b></td>${C.map((m,j)=>{const v=f(m),pv=j?f(C[j-1]):null;return`<td>${v===null?'<small>لم تُدخل المبيعات</small>':(pp?v.toFixed(1)+'%':money(v))}${j&&v!==null&&pv!==null&&!pp?`<small>${dif(v,pv,bad,pp)}</small>`:''}</td>`}).join('')}</tr>`).join('');
@@ -670,13 +690,13 @@ function pgInc(){
  const ext=M?`<div class="card"><h3>➕ بنود إضافية في قائمة الدخل ${btn('addz:e','＋ مصروف')} ${btn('addz:i','＋ إيراد')}</h3><p class="hint">أضف أي بند غير موجود في القائمة (مثل رسوم بنكية، صيانة طارئة، إيراد آخر…). المصروف يُخصم من صافي الدخل والإيراد يُضاف إليه، ويظهر البند في قائمة الدخل وفي الرئيسية والتحليل وملف Excel.</p>${TB(TH('البند')+TH('النوع')+TH('المبلغ','b')+TH(''),M.xo.map((x,i)=>`<tr><td>${IN(`z:${i}:n`,x.n,'text')}</td><td>${sel(i,x.k)}</td><td>${IN(`z:${i}:a`,x.a)}</td><td><button class="del" data-act="delz:${i}">🗑</button></td></tr>`).join('')||'<tr><td colspan="4">لا توجد بنود إضافية.</td></tr>')}</div>`:`<div class="card"><p class="hint">لإضافة بنود إضافية اختر فرعاً واحداً. هنا تظهر مجاميعها لكل الفروع.</p></div>`;
  return ph(`📑 قائمة الدخل: ${AR[mi]} ${yr}`,btn('xlInc','⬇ Excel')+' ')+`<div class="card">${TB(TH('البند')+TH('المبلغ','b')+TH('النسبة إلى إجمالي الإيراد','a'),rows)}</div>${ext}`;
 }
-const PAGES={map:pgMap,users:pgUsers,log:pgLog,home:pgHome,sales:pgSales,exp:pgExp,buy:pgBuy,stk:pgStk,man:pgMan,cash:pgCash,ana:pgAna,inc:pgInc,sal:pgSal,adv:pgAdv,ot:pgOT,anaS:pgAnaS,anaB:()=>pgAnaC(0),anaK:()=>pgAnaC(1),cmpb:pgCmpB};
+const PAGES={map:pgMap,users:pgUsers,log:pgLog,home:pgHome,sales:pgSales,exp:pgExp,buy:pgBuy,stk:pgStk,man:pgMan,cash:pgCash,ana:pgAna,inc:pgInc,sal:pgSal,adv:pgAdv,ot:pgOT,anaS:pgAnaS,anaB:()=>pgAnaC(0),anaK:()=>pgAnaC(1),anaE:pgAnaE,cmpb:pgCmpB};
 function build(){
  if(SBON){if(RECOV)return recUI();if(loading)return`<div class="card"><p>⏳ جارٍ التحميل…</p></div>`;if(!ME)return loginUI();if(!ME.role)return pendingUI();if(!S.branches.length)return`<div class="card"><p>لا توجد فروع مرتبطة بحسابك. تواصل مع المدير.</p>${HDR()}</div>`}
  const rv=i=>CALC(br,yr,i).rev;
  return`<header class="top"><input class="co" data-b="co" value="${esc(S.company)}" aria-label="اسم الشركة"${SBON&&ME.role!=='admin'?' readonly':''}><div class="tools"><span class="btn clk" id="clk">🕒 ${clkTxt()}</span><button class="btn" data-act="xlBak" title="تنزيل نسخة كاملة من البيانات">💾 نسخ احتياطي</button><button class="btn" data-act="xlAll" title="تصدير كل الأقسام Excel">📤 تسفير البيانات</button><button class="btn${pg==='home'?' on':''}" data-go="home">🏠 الرئيسية</button><select class="btn" data-b="yr" aria-label="السنة">${Array.from({length:12},(_,k)=>2024+k).map(y=>`<option value="${y}"${y===yr?' selected':''}>${y}</option>`).join('')}</select>${HDR()}</div></header>${DEMO?`<div class="demo"><span>👁 وضع المعاينة: بيانات تجريبية في المتصفح بس، ومفيش أي حاجة بتتحفظ على السيرفر.</span><button class="pick" data-act="exitDemo">خروج من المعاينة</button></div>`:''}
  <nav class="tabs">${S.branches.map((b,i)=>`<button class="tab${b===br?' on':''}" style="--c:${BCOL[i%6]}" data-br="${esc(b)}">${esc(b)}</button>`).join('')}${TABX()}<button class="tab homeb" data-go="home">🏠 الرئيسية</button></nav>
- <div class="lay"><aside class="side"><h3>🛠 القوائم التشغيلية</h3><div class="sg">${[['home','الرئيسية','🏠','var(--accent)'],...NAVX().filter(x=>OPSN.includes(x[0]))].map(([g,t,ic,c,sb])=>`<button class="sn${sb?' sub':''}${pg===g?' on':''}" style="--c:${c}" data-go="${g}"><span>${ic}</span>${t}</button>`).join('')}</div><h3>📅 الشهور</h3><div class="sg sm">${AR.map((n,i)=>`<button class="mb${i===mi?' on':''}" style="--h:${i*30}" data-mo="${i}"><span>${n}</span><small>${V(rv(i)>0?kf(rv(i)):'—')}</small></button>`).join('')}</div></aside><main>${(perm(pg)==='h'?(pg='home',''):'')}${lockBar()}${pgView()?'<div class="lockbar on">👁 الصفحة دي عرض بس حسب صلاحياتك.</div>':''}${PAGES[pg]()}<p class="note">${esc(msg)||(SBON?'البيانات محفوظة على الخادم (Supabase). الإصدار: 28-11-2026 ✔ قفل الشهر · حد الفروقات · مقارنة الفروع · نسخ احتياطي':'البيانات تُحفظ في هذا المتصفح فقط. الأرقام الحالية تجريبية.')}</p>${diagTxt?`<pre class="alert" style="white-space:pre-wrap">${esc(diagTxt)}</pre>`:''}</main><aside class="side side2"><h3>📊 قوائم التحليل</h3><div class="sg">${NAVX().filter(x=>!OPSN.includes(x[0])).map(([g,t,ic,c,sb])=>`<button class="sn${sb?' sub':''}${pg===g?' on':''}" style="--c:${c}" data-go="${g}"><span>${ic}</span>${t}</button>`).join('')}</div></aside></div>`;
+ <div class="lay"><aside class="side"><button class="homebig${pg==='home'?' on':''}" data-go="home">🏠 الرئيسية</button><h3 class="mh mh1">🛠 القوائم التشغيلية</h3><div class="sg">${NAVX().filter(x=>OPSN.includes(x[0])).map(([g,t,ic,c,sb])=>`<button class="sn${sb?' sub':''}${pg===g?' on':''}" style="--c:${c}" data-go="${g}"><span>${ic}</span>${t}</button>`).join('')}</div><h3>📅 الشهور</h3><div class="sg sm">${AR.map((n,i)=>`<button class="mb${i===mi?' on':''}" style="--h:${i*30}" data-mo="${i}"><span>${n}</span><small>${V(rv(i)>0?kf(rv(i)):'—')}</small></button>`).join('')}</div></aside><main>${(perm(pg)==='h'?(pg='home',''):'')}${lockBar()}${pgView()?'<div class="lockbar on">👁 الصفحة دي عرض بس حسب صلاحياتك.</div>':''}${PAGES[pg]()}<p class="note">${esc(msg)||(SBON?'البيانات محفوظة على الخادم (Supabase). الإصدار: 28-11-2026 ✔ قفل الشهر · حد الفروقات · مقارنة الفروع · نسخ احتياطي':'البيانات تُحفظ في هذا المتصفح فقط. الأرقام الحالية تجريبية.')}</p>${diagTxt?`<pre class="alert" style="white-space:pre-wrap">${esc(diagTxt)}</pre>`:''}</main><aside class="side side2"><h3 class="mh mh2">📊 قوائم التحليل</h3><div class="sg">${NAVX().filter(x=>!OPSN.includes(x[0])).map(([g,t,ic,c,sb])=>`<button class="sn${sb?' sub':''}${pg===g?' on':''}" style="--c:${c}" data-go="${g}"><span>${ic}</span>${t}</button>`).join('')}</div></aside></div>`;
 }
 const app=$('#root');
 let dq=[],draft=null;
@@ -896,6 +916,7 @@ async function act(s){
  else if(a==='xlSal')return xlm('الرواتب '+AR[mi]+' '+yr,[...S.branches.map(b=>['رواتب '+b,rSal(b)]),['عمالة خارجية',[['البيان','الفرع','المبلغ'],...S.branches.flatMap(b=>mo(b,yr,mi).sal.map(x=>[x.n||'',b,num(x.a)]))]]],1);
  else if(a==='xlOT')return xl('الإضافي والخصومات',rOT());
  else if(a==='xlAdv')return xl('سلف الموظفين',rAdv(M));
+ else if(a==='xlAnaE')return xlm('تحليل المصروفات التشغيلية '+yr,[['المصروفات التشغيلية',rAnaE()]],1);
  else if(a==='xlAnaS')return xl('تحليل البن والمطبخ',rAnaS2());
  else if(a==='xlAnaC')return xlm('تحليل '+CATS[+x][2],[[CATS[+x][2],rAnaC(+x)]],1);
  else if(a==='xlCmpB')return xlm('مقارنة الفروع '+yr,rCmpB(),1);
@@ -921,7 +942,7 @@ app.addEventListener('input',e=>{
  if(p.startsWith('dm:')){if(SBON&&ME.role!=='admin')return;const[,dk,df]=p.split(':');S.dmap=S.dmap||{};S.dmap[dk]=S.dmap[dk]||{};S.dmap[dk][df]=i.value;if(SBON){clearTimeout(window._dmt);window._dmt=setTimeout(()=>DB.setSetting('daftra_map',S.dmap).catch(()=>{}),800)}else save();return}
  if(p==='co'){if(SBON&&ME.role!=='admin')return;S.company=i.value;if(SBON){clearTimeout(cot);cot=setTimeout(()=>DB.setSetting('company',S.company).catch(()=>{}),800)}else save();return}
  if(p==='key'){try{localStorage.setItem(KEYN,i.value.trim())}catch(e){}return}
- if(p==='yr'){yr=+i.value;ana=null;acm=null;cbm=null;draft=null;dq=[];render();return}
+ if(p==='yr'){yr=+i.value;ana=null;acm=null;cbm=null;aem=null;draft=null;dq=[];render();return}
  const[k,a,f]=p.split(':'),M=br===ALL?null:mo(br,yr,mi);if(!M)return;if(isLocked()||pgView())return;
  if(k==='x'){if(!draft)return;if(f===undefined)draft[a]=['total','tax'].includes(a)?num(i.value):i.value;else{const l=draft.lines[+a];l[f]=['q','a'].includes(f)?num(i.value):i.value}soft();return}
  if(k==='d'){const d=M.days[+a];d[f]=f==='d'?i.value:(i.value===''?'':+i.value)}
@@ -949,6 +970,7 @@ app.addEventListener('change',async e=>{
  if(!S||(SBON&&!ME))return;
  if(i.dataset.u!==undefined)return userChange(i);
  if(i.dataset.af!==undefined){if(i.dataset.af==='u')audU=i.value;else audB=i.value;render();return}
+ if(i.dataset.aem!==undefined){const n=+i.dataset.aem;aem=i.checked?[...new Set([...aem,n])]:aem.filter(x=>x!==n);render();return}
  if(i.dataset.ck2!==undefined){const n=+i.dataset.ck2;acm=i.checked?[...new Set([...acm,n])]:acm.filter(x=>x!==n);render();return}
  if(i.dataset.cbm!==undefined){const n=+i.dataset.cbm;cbm=i.checked?[...new Set([...cbm,n])]:cbm.filter(x=>x!==n);render();return}
  if(i.dataset.perm!==undefined){if(!(SBON&&ME&&ME.role==='admin'))return;const[r,g]=i.dataset.perm.split(':');S.perms=S.perms||{};S.perms[r]=S.perms[r]||{};S.perms[r][g]=i.value;if(!DEMO)DB.setSetting('perms',S.perms).then(()=>{msg='تم حفظ الصلاحية.';render()}).catch(e=>{msg='تعذّر حفظ الصلاحيات: '+((e&&e.message)||'');render()});return}
@@ -1126,7 +1148,7 @@ function lockUI(){
  const L=SBON&&ME&&RO?false:((pg!=='sal'&&isLocked())||pgView());
  if(!(SBON&&ME&&RO)&&!L)return;
  const root=L?(app.querySelector('main')||app):app;
- root.querySelectorAll('input,select').forEach(el=>{const d=el.dataset;if(d.b==='yr'||d.ck!==undefined||d.cmp!==undefined||d.af!==undefined||d.ck2!==undefined||d.cbm!==undefined||(L&&(d.lim!==undefined||d.ctol!==undefined||d.emp!==undefined)))return;el.disabled=true});
+ root.querySelectorAll('input,select').forEach(el=>{const d=el.dataset;if(d.b==='yr'||d.ck!==undefined||d.cmp!==undefined||d.af!==undefined||d.ck2!==undefined||d.aem!==undefined||d.cbm!==undefined||(L&&(d.lim!==undefined||d.ctol!==undefined||d.emp!==undefined)))return;el.disabled=true});
  root.querySelectorAll('[data-act]').forEach(b=>{if(!/^(xl|view|logout|refresh|unlock|exitDemo|demo)/.test(b.dataset.act)&&!(L&&/^(addEmp|delEmp)/.test(b.dataset.act)))b.remove()});
  root.querySelectorAll('input[type=file]').forEach(f=>{(f.closest('label')||f).remove()});
  root.querySelectorAll('.wr').forEach(el=>el.remove());
