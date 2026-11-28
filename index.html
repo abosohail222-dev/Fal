@@ -26,7 +26,7 @@ button,select,input{font:inherit;color:inherit}button{cursor:pointer}
 .tab.add{border-style:dashed}.tab.add::before{display:none}
 .nb{padding:7px 12px;border:2px solid var(--line);border-radius:12px;width:170px}
 .lay>main{min-width:0}
-.lay{display:grid;grid-template-columns:200px 1fr;gap:14px;align-items:start}
+.lay{display:grid;grid-template-columns:190px minmax(0,1fr) 190px;gap:14px;align-items:start}
 .side{position:sticky;top:12px;background:var(--surface);border-radius:22px;padding:12px;display:flex;flex-direction:column;gap:6px}
 .side h3{margin:2px 6px 6px}
 .mb{display:flex;justify-content:space-between;align-items:center;gap:8px;border:0;border-radius:14px;padding:7px 14px;color:#fff;background:hsl(var(--h) 66% 38%);font-weight:700}
@@ -139,6 +139,8 @@ tr.over td{background:#ffe3e3!important}
 .jt td{text-align:start}.jt td.am{text-align:center;font-weight:800;white-space:nowrap}
 .warnc{background:#fff4e6;border:2px solid #e8590c;color:#7a3300;border-radius:12px;padding:8px 12px;font-weight:700;margin:8px 0}
 .okc{background:#e6fcf5;border:2px solid #087f5b;color:#05543d;border-radius:12px;padding:8px 12px;font-weight:700;margin:8px 0}
+.lay>.side{order:1}.lay>main{order:2}.lay>.side2{order:3}
+@media (max-width:860px){.lay{grid-template-columns:minmax(0,1fr)!important}.lay>*{min-width:0}.lay>.side{order:1}.lay>.side2{order:2}.lay>main{order:3}}
 </style>
 </head>
 <body>
@@ -281,6 +283,7 @@ function xlAll(M){
  L.push(['قائمة الدخل',rInc()],['مقارنة الشهور',rAnaI()],['تحليل البن والمطبخ',rAnaS2()],['تحليل البن',rAnaC(0)],['تحليل المطبخ',rAnaC(1)]);if(S.branches.length>1)rCmpB().forEach(([n,r])=>L.push(['فروع - '+n,r]));
  return xlm('تقرير شامل',L);
 }
+const OPSN=['buy','stk','man','sales','exp','sal','adv','ot','cash'];
 const NAV=[['buy','المخزون','📦','#c2255c'],['stk','الجرد','✅','#5f3dc4'],['man','مصروفات الهالك والإهلاك','🧮','#d9480f'],['sales','جدول تفاصيل المبيعات','📋','#1864ab'],['exp','المصروفات التشغيلية','🧾','#087f5b'],['sal','الرواتب','👥','#6741d9'],['adv','سلف الموظفين','💸','#9c36b5'],['ot','الإضافي والخصومات','⏱️','#e67700'],['cash','تصفية عهدة الكاش','💵','#0b7285'],['ana','التحليل','📈','#a61e4d'],['anaS','تحليل منتجات البن والمطبخ','☕','#a61e4d',1],['anaB','تحليل البن','🫘','#7a4f2e',1],['anaK','تحليل منتجات المطبخ','🥐','#d9480f',1],['inc','قائمة الدخل','📑','#7a4f2e'],['cmpb','مقارنة الفروع','🏪','#364fc7']];
 let ana=null;
 const IN=(p,v,t)=>`<input data-b="${p}" type="${t||'number'}"${t?'':' step="any" inputmode="decimal"'} value="${t?esc(v):(has(v)?+(+v).toFixed(2):'')}">`;
@@ -673,7 +676,7 @@ function build(){
  const rv=i=>CALC(br,yr,i).rev;
  return`<header class="top"><input class="co" data-b="co" value="${esc(S.company)}" aria-label="اسم الشركة"${SBON&&ME.role!=='admin'?' readonly':''}><div class="tools"><span class="btn clk" id="clk">🕒 ${clkTxt()}</span><button class="btn" data-act="xlBak" title="تنزيل نسخة كاملة من البيانات">💾 نسخ احتياطي</button><button class="btn" data-act="xlAll" title="تصدير كل الأقسام Excel">📤 تسفير البيانات</button><button class="btn${pg==='home'?' on':''}" data-go="home">🏠 الرئيسية</button><select class="btn" data-b="yr" aria-label="السنة">${Array.from({length:12},(_,k)=>2024+k).map(y=>`<option value="${y}"${y===yr?' selected':''}>${y}</option>`).join('')}</select>${HDR()}</div></header>${DEMO?`<div class="demo"><span>👁 وضع المعاينة: بيانات تجريبية في المتصفح بس، ومفيش أي حاجة بتتحفظ على السيرفر.</span><button class="pick" data-act="exitDemo">خروج من المعاينة</button></div>`:''}
  <nav class="tabs">${S.branches.map((b,i)=>`<button class="tab${b===br?' on':''}" style="--c:${BCOL[i%6]}" data-br="${esc(b)}">${esc(b)}</button>`).join('')}${TABX()}<button class="tab homeb" data-go="home">🏠 الرئيسية</button></nav>
- <div class="lay"><aside class="side"><h3>📂 القوائم</h3><div class="sg">${[['home','الرئيسية','🏠','var(--accent)'],...NAVX()].map(([g,t,ic,c,sb])=>`<button class="sn${sb?' sub':''}${pg===g?' on':''}" style="--c:${c}" data-go="${g}"><span>${ic}</span>${t}</button>`).join('')}</div><h3>📅 الشهور</h3><div class="sg sm">${AR.map((n,i)=>`<button class="mb${i===mi?' on':''}" style="--h:${i*30}" data-mo="${i}"><span>${n}</span><small>${V(rv(i)>0?kf(rv(i)):'—')}</small></button>`).join('')}</div></aside><main>${(perm(pg)==='h'?(pg='home',''):'')}${lockBar()}${pgView()?'<div class="lockbar on">👁 الصفحة دي عرض بس حسب صلاحياتك.</div>':''}${PAGES[pg]()}<p class="note">${esc(msg)||(SBON?'البيانات محفوظة على الخادم (Supabase). الإصدار: 28-11-2026 ✔ قفل الشهر · حد الفروقات · مقارنة الفروع · نسخ احتياطي':'البيانات تُحفظ في هذا المتصفح فقط. الأرقام الحالية تجريبية.')}</p>${diagTxt?`<pre class="alert" style="white-space:pre-wrap">${esc(diagTxt)}</pre>`:''}</main></div>`;
+ <div class="lay"><aside class="side"><h3>🛠 القوائم التشغيلية</h3><div class="sg">${[['home','الرئيسية','🏠','var(--accent)'],...NAVX().filter(x=>OPSN.includes(x[0]))].map(([g,t,ic,c,sb])=>`<button class="sn${sb?' sub':''}${pg===g?' on':''}" style="--c:${c}" data-go="${g}"><span>${ic}</span>${t}</button>`).join('')}</div><h3>📅 الشهور</h3><div class="sg sm">${AR.map((n,i)=>`<button class="mb${i===mi?' on':''}" style="--h:${i*30}" data-mo="${i}"><span>${n}</span><small>${V(rv(i)>0?kf(rv(i)):'—')}</small></button>`).join('')}</div></aside><main>${(perm(pg)==='h'?(pg='home',''):'')}${lockBar()}${pgView()?'<div class="lockbar on">👁 الصفحة دي عرض بس حسب صلاحياتك.</div>':''}${PAGES[pg]()}<p class="note">${esc(msg)||(SBON?'البيانات محفوظة على الخادم (Supabase). الإصدار: 28-11-2026 ✔ قفل الشهر · حد الفروقات · مقارنة الفروع · نسخ احتياطي':'البيانات تُحفظ في هذا المتصفح فقط. الأرقام الحالية تجريبية.')}</p>${diagTxt?`<pre class="alert" style="white-space:pre-wrap">${esc(diagTxt)}</pre>`:''}</main><aside class="side side2"><h3>📊 قوائم التحليل</h3><div class="sg">${NAVX().filter(x=>!OPSN.includes(x[0])).map(([g,t,ic,c,sb])=>`<button class="sn${sb?' sub':''}${pg===g?' on':''}" style="--c:${c}" data-go="${g}"><span>${ic}</span>${t}</button>`).join('')}</div></aside></div>`;
 }
 const app=$('#root');
 let dq=[],draft=null;
